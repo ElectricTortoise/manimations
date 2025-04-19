@@ -1,0 +1,51 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Manim render outputs (customize if you render elsewhere)
+media/
+videos/
+*.mp4
+*.gif
+*.png
+
+# Manim temporary files
+*.log
+*.json
+*.tex
+*.aux
+*.svg
+*.dvi
+
+# VSCode settings
+.vscode/
+.history/
+
+# Environment files
+.env
+.venv/
+venv/
+ENV/
+env/
+*.env
+
+# Jupyter notebooks checkpoints (if using nbmanim or Jupyter)
+.ipynb_checkpoints/
+
+# Anaconda
+conda-meta/
+*.conda
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Pip tools
+pip-log.txt
+pip-delete-this-directory.txt
