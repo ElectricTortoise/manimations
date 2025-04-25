@@ -49,3 +49,6 @@ Thumbs.db
 # Pip tools
 pip-log.txt
 pip-delete-this-directory.txt
+
+#Testing grounds
+**/test.py
