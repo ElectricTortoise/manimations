@@ -22,18 +22,21 @@ def MakeAlphaBeta(alpha, beta):
     return text
 
 class AnimateTree(Scene):
-    VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": 0.35, "color":BLACK, "fill_opacity": 1}
+    RADIUS = 0.35
+    VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
     LAYOUT_SCALE = (6, 3.5)
 
     #Negamax search algorithm
     def Search(self, displayed_tree: Graph, internal_tree: Tree, text_list: list, current_node: int, side_to_move: int, alpha=-math.inf, beta=math.inf):
 
-        def WriteAlphaBeta(text_list, node, new_text: Mobject):
-            if text_list[current_node] == None:
-                text_list[current_node] = new_text
-                self.play(Write(new_text))
+        def WriteAlphaBeta(text_list, node, text: Mobject):
+            if text_list[node] == None:
+                text_list[node] = text
+                self.play(Write(text))
             else:
-                self.play(Transform(text_list[current_node], new_text))
+                self.play(Transform(text_list[current_node], text))
+
+        bestSoFar = alpha
 
         #Display parent's ab values
         displayed_node = displayed_tree[current_node]
@@ -42,28 +45,34 @@ class AnimateTree(Scene):
 
         if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
             bestSoFar = internal_tree.scores[current_node] * side_to_move
-            displayed_node = displayed_tree[current_node]
-            text = MakeAlphaBeta(bestSoFar, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
+            if bestSoFar > alpha:
+                alpha = bestSoFar
+            text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
             WriteAlphaBeta(text_list, current_node, text)
             return bestSoFar
         
         for children_node in internal_tree.edges_dict[current_node]:
             self.play(Indicate(displayed_tree.edges[(current_node, children_node)]))
 
-            bestSoFar = -self.Search(displayed_tree, internal_tree, text_list, children_node, -side_to_move, -beta, -alpha)
+            bestSoFar = max(bestSoFar, -self.Search(displayed_tree, internal_tree, text_list, children_node, -side_to_move, -beta, -alpha))
             if bestSoFar > alpha:
                 alpha = bestSoFar
-
-            displayed_node = displayed_tree[current_node]
+            if alpha >= beta:
+                self.play(Write(MathTex(NumToStr(bestSoFar*side_to_move)).move_to(displayed_node)))
+                self.play(Create(Cross(scale_factor=self.RADIUS).move_to(displayed_node)))
+                return bestSoFar
+            
             text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
             self.play(Indicate(displayed_tree.edges[(current_node, children_node)]))
             WriteAlphaBeta(text_list, current_node, text)
         
-        return alpha
+        self.play(Write(MathTex(NumToStr(bestSoFar*side_to_move)).move_to(displayed_node)))
+
+        return bestSoFar
             
     def construct(self):
         #Generates the tree
-        depth = 3
+        depth = 4
         avg_branching_factor = 2
         
         internal_tree = Tree()
