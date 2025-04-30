@@ -4,37 +4,8 @@ import random as Rand
 import math
 from collections import deque
 
-class Tree:
-    edges_list = [(1, 2), (1, 3), (2, 4), (2, 5), (3, 6), (3, 7), (3, 8), (4, 9), (4, 10), (5, 11), (5, 12), (6, 13), (6, 14), (7, 15), (7, 16), (8, 17), 
-    (8, 18)]
-    edges_dict = {1: (2, 3), 2: (4, 5), 3: (6, 7, 8), 4: (9, 10), 5: (11, 12), 6: (13, 14), 7: (15, 16), 8: (17, 18)}
-    labels = {1:MathTex('').flip(axis=UP),2:MathTex('').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('').flip(axis=UP),6:MathTex('').flip(axis=UP),7:MathTex('').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('8').flip(axis=UP),10:MathTex('-1').flip(axis=UP),11:MathTex('3').flip(axis=UP),12:MathTex('1').flip(axis=UP),13:MathTex('0').flip(axis=UP),14:MathTex('-8').flip(axis=UP),15:MathTex('2').flip(axis=UP),16:MathTex('6').flip(axis=UP),17:MathTex('7').flip(axis=UP),18:MathTex('8').flip(axis=UP),}
-    scores = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None, 7: None, 8: None, 9: 8, 10: -1, 11: 3, 12: 1, 13: 0, 14: -8, 15: 2, 16: 6, 17: 7, 18: 8}
-    size = 19
 
-    def __init__(self, avg_branching_factor=0, max_depth=0):
-        if avg_branching_factor == 0 or max_depth == 0:
-            return
-        num_leaves = 0
-        while num_leaves < 8 or num_leaves > 10:
-            num_leaves = 0
-            self.edges_list, self.edges_dict = GenerateEdges(avg_branching_factor, max_depth)
-            self.labels, self.scores = GetLabels(self.edges_dict)
-            for node in self.scores:
-                if self.scores[node] is not None:
-                    num_leaves += 1
-        self.size = len(self.edges_list) + 2
-
-    def __str__(self):
-        label_string = ""
-        open_brace = "{"
-        close_brace = "}"
-        for label in self.labels:
-            label_string += str(label) + ":" + str(self.labels[label]) + ".flip(axis=UP)" + ","
-        return f"edges_list = {self.edges_list} \nedges_dict = {self.edges_dict} \nlabels = {open_brace}{label_string}{close_brace} \nscores = {self.scores} \nsize = {self.size}"
-
-
-def GenerateEdges(avgBranchingFactor, maxDepth):
+def GenerateTree(avgBranchingFactor, max_depth, fixed_depth: bool):
     edges_list = []
     edges_dict = {}
     children = []
@@ -42,15 +13,22 @@ def GenerateEdges(avgBranchingFactor, maxDepth):
     queue = deque()
     queue.append((1, 1))  # (nodeID, currentDepth)
 
+    #Generate edges
     while queue:
         parentID, depth = queue.popleft()
 
-        if depth >= maxDepth:
+        if depth >= max_depth:
             continue
 
         branchingFactor = np.random.poisson(avgBranchingFactor)
-        if branchingFactor <= 1:
-            branchingFactor = Rand.choice((2,3))
+
+        if fixed_depth:
+            while (branchingFactor == 0):
+                branchingFactor = np.random.poisson(avgBranchingFactor)
+
+        elif not fixed_depth:
+            while (branchingFactor == 1):
+                branchingFactor = np.random.poisson(avgBranchingFactor)
 
         for _ in range(branchingFactor):
             childID = node_counter
@@ -66,13 +44,12 @@ def GenerateEdges(avgBranchingFactor, maxDepth):
     for edge in edges_dict:
         edges_dict[edge] = tuple(edges_dict[edge])
 
-    return edges_list, edges_dict
-
-def GetLabels(edges_dict):
+    #Generate labels
     labels = {}
     scores = {}
+    side_to_move = -1 if max_depth % 2 == 0 else 1
     if len(list(edges_dict.keys())) == 0:
-        return {1: MathTex("")}, {1: None}
+        return edges_list, edges_dict, {1: MathTex("")}, {1: None}
     max_node = edges_dict[list(edges_dict.keys())[-1]][-1]
     for nodeID in range(1, max_node+1):
         if nodeID in edges_dict: #parent node
@@ -82,13 +59,78 @@ def GetLabels(edges_dict):
             score = Rand.randint(-9, 9)
             labels[nodeID] = MathTex(f"{score}").flip(axis=UP)
             scores[nodeID] = score
-    return labels, scores
+
+    return edges_list, edges_dict, labels, scores
+
+class Tree:
+    edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (4, 8), (4, 9), (6, 10), (6, 11), (6, 12), (8, 13), (8, 14), (8, 15), (9, 16), (9, 17)] 
+    edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 7, 8, 9), 6: (10, 11, 12), 8: (13, 14, 15), 9: (16, 17)}
+    labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),7:MathTex('0').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('-2').flip(axis=UP),14:MathTex('8').flip(axis=UP),15:MathTex('6').flip(axis=UP),16:MathTex('-1').flip(axis=UP),17:MathTex('-6').flip(axis=UP),}
+    scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 7: 0, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: -2, 14: 8, 15: 6, 16: -1, 17: -6}
+    size = 18
+
+    def __init__(self, avg_branching_factor=0, max_depth=0, fixed_depth=True):
+        if avg_branching_factor == 0 or max_depth == 0:
+            return
+        num_leaves = 0
+        leaf_offset = max(0, max_depth - 4) 
+        if fixed_depth:
+            leaf_offset = 0
+        while num_leaves < (8 + leaf_offset) or num_leaves > (10 + leaf_offset):
+            num_leaves = 0
+            self.edges_list, self.edges_dict, self.labels, self.scores = GenerateTree(avg_branching_factor, max_depth, fixed_depth)
+            for node in self.scores:
+                if self.scores[node] is not None:
+                    num_leaves += 1
+        self.size = len(self.edges_list) + 2
+
+    def __str__(self):
+        label_string = ""
+        open_brace = "{"
+        close_brace = "}"
+        for label in self.labels:
+            label_string += str(label) + ":" + str(self.labels[label]) + ".flip(axis=UP)" + ","
+        return f"edges_list = {self.edges_list} \nedges_dict = {self.edges_dict} \nlabels = {open_brace}{label_string}{close_brace} \nscores = {self.scores} \nsize = {self.size}"
 
 
-# edges_list = [(1, 2), (1, 3), (1, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9), (3, 10), (4, 11), (4, 12), (4, 13)] 
-# edges_dict = {1: (2, 3, 4), 2: (5, 6), 3: (7, 8, 9, 10), 4: (11, 12, 13)}
-# labels = {1: MathTex('').flip(axis=UP), 2: MathTex('').flip(axis=UP), 3: MathTex('').flip(axis=UP), 4: MathTex('').flip(axis=UP), 5: MathTex('-2').flip(axis=UP), 6: MathTex('6').flip(axis=UP), 7: MathTex('-8').flip(axis=UP), 8: MathTex('9').flip(axis=UP), 9: MathTex('-4').flip(axis=UP), 10: MathTex('7').flip(axis=UP), 11: MathTex('3').flip(axis=UP), 12: MathTex('5').flip(axis=UP), 13: MathTex('-9').flip(axis=UP)}
-# scores = {1: None, 2: None, 3: None, 4: None, 5: -2, 6: 6, 7: -8, 8: 9, 9: -4, 10: 7, 11: 3, 12: 5, 13: -9}
-# size = len(edges_list) + 2
 
-# print(Tree(2,4))
+    # edges_list = [(1, 2), (1, 3), (1, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9), (3, 10), (4, 11), (4, 12), (4, 13)] 
+    # edges_dict = {1: (2, 3, 4), 2: (5, 6), 3: (7, 8, 9, 10), 4: (11, 12, 13)}
+    # labels = {1: MathTex('').flip(axis=UP), 2: MathTex('').flip(axis=UP), 3: MathTex('').flip(axis=UP), 4: MathTex('').flip(axis=UP), 5: MathTex('-2').flip(axis=UP), 6: MathTex('6').flip(axis=UP), 7: MathTex('-8').flip(axis=UP), 8: MathTex('9').flip(axis=UP), 9: MathTex('-4').flip(axis=UP), 10: MathTex('7').flip(axis=UP), 11: MathTex('3').flip(axis=UP), 12: MathTex('5').flip(axis=UP), 13: MathTex('-9').flip(axis=UP)}
+    # scores = {1: None, 2: None, 3: None, 4: None, 5: -2, 6: 6, 7: -8, 8: 9, 9: -4, 10: 7, 11: 3, 12: 5, 13: -9}
+    # size = len(edges_list) + 2
+
+
+#Perfect move ordering (beta cutoff demo)
+    # edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (5, 8), (5, 9), (6, 10), (6, 11), (7, 12), (7, 13), (7, 14), (9, 15), (9, 16)] 
+    # edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 7), 5: (8, 9), 6: (10, 11), 7: (12, 13, 14), 9: (15, 16)}
+    # labels = {1:MathTex('').flip(axis=UP),2:MathTex('0').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('').flip(axis=UP),6:MathTex('').flip(axis=UP),7:MathTex('').flip(axis=UP),8:MathTex('8').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-9').flip(axis=UP),11:MathTex('-4').flip(axis=UP),12:MathTex('-4').flip(axis=UP),13:MathTex('6').flip(axis=UP),14:MathTex('1').flip(axis=UP),15:MathTex('-3').flip(axis=UP),16:MathTex('-7').flip(axis=UP),}
+    # scores = {1: None, 2: 0, 3: None, 4: None, 5: None, 6: None, 7: None, 8: 8, 9: None, 10: -9, 11: -4, 12: -4, 13: 6, 14: 1, 15: -3, 16: -7}
+    # size = 17
+
+#Perfect move ordering again
+    # edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (4, 8), (4, 9), (6, 10), (6, 11), (6, 12), (8, 13), (8, 14), (8, 15), (9, 16), (9, 17)] 
+    # edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 7, 8, 9), 6: (10, 11, 12), 8: (13, 14, 15), 9: (16, 17)}
+    # labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),7:MathTex('0').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('-2').flip(axis=UP),14:MathTex('8').flip(axis=UP),15:MathTex('6').flip(axis=UP),16:MathTex('-1').flip(axis=UP),17:MathTex('-6').flip(axis=UP),}
+    # scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 7: 0, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: -2, 14: 8, 15: 6, 16: -1, 17: -6}
+    # size = 18
+
+
+class DisplayTree(Scene):
+    RADIUS = 0.35
+    VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
+    LAYOUT_SCALE = (6, 3.5)
+    
+    def construct(self):
+        internal_tree = Tree(2, 5, fixed_depth=False)
+        print(internal_tree)
+        displayed_tree = Graph([i for i in range(1, internal_tree.size)],
+            internal_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=self.LAYOUT_SCALE,
+            vertex_config=self.VERTEX_CONFIG,
+            labels=internal_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+        self.add(displayed_tree)
+
