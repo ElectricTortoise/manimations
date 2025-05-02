@@ -47,7 +47,6 @@ def GenerateTree(avgBranchingFactor, max_depth, fixed_depth: bool):
     #Generate labels
     labels = {}
     scores = {}
-    side_to_move = -1 if max_depth % 2 == 0 else 1
     if len(list(edges_dict.keys())) == 0:
         return edges_list, edges_dict, {1: MathTex("")}, {1: None}
     max_node = edges_dict[list(edges_dict.keys())[-1]][-1]
@@ -92,13 +91,22 @@ class Tree:
             label_string += str(label) + ":" + str(self.labels[label]) + ".flip(axis=UP)" + ","
         return f"edges_list = {self.edges_list} \nedges_dict = {self.edges_dict} \nlabels = {open_brace}{label_string}{close_brace} \nscores = {self.scores} \nsize = {self.size}"
 
-
-
-    # edges_list = [(1, 2), (1, 3), (1, 4), (2, 5), (2, 6), (3, 7), (3, 8), (3, 9), (3, 10), (4, 11), (4, 12), (4, 13)] 
-    # edges_dict = {1: (2, 3, 4), 2: (5, 6), 3: (7, 8, 9, 10), 4: (11, 12, 13)}
-    # labels = {1: MathTex('').flip(axis=UP), 2: MathTex('').flip(axis=UP), 3: MathTex('').flip(axis=UP), 4: MathTex('').flip(axis=UP), 5: MathTex('-2').flip(axis=UP), 6: MathTex('6').flip(axis=UP), 7: MathTex('-8').flip(axis=UP), 8: MathTex('9').flip(axis=UP), 9: MathTex('-4').flip(axis=UP), 10: MathTex('7').flip(axis=UP), 11: MathTex('3').flip(axis=UP), 12: MathTex('5').flip(axis=UP), 13: MathTex('-9').flip(axis=UP)}
-    # scores = {1: None, 2: None, 3: None, 4: None, 5: -2, 6: 6, 7: -8, 8: 9, 9: -4, 10: 7, 11: 3, 12: 5, 13: -9}
-    # size = len(edges_list) + 2
+def GetMinimaxTree(tree: Tree, side_to_move=1, current_node=1):
+    minimax_tree = tree
+    if current_node not in minimax_tree.edges_dict: #checks if current_node is a leaf
+        minimax_tree.scores[current_node] *= side_to_move
+        return minimax_tree
+    
+    for children_node in minimax_tree.edges_dict[current_node]:
+        GetMinimaxTree(minimax_tree, side_to_move*-1, children_node)
+    
+    max_node = minimax_tree.edges_dict[list(minimax_tree.edges_dict.keys())[-1]][-1]
+    for nodeID in range(1, max_node+1):
+        if nodeID in minimax_tree.edges_dict: #parent node
+            pass
+        else:
+            minimax_tree.labels[nodeID] = MathTex(f"{minimax_tree.scores[nodeID]}").flip(axis=UP)
+    return minimax_tree
 
 
 #Perfect move ordering (beta cutoff demo)
