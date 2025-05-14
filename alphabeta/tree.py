@@ -62,17 +62,17 @@ def GenerateTree(avgBranchingFactor, max_depth, fixed_depth: bool):
     return edges_list, edges_dict, labels, scores
 
 class Tree:
-    edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (4, 8), (4, 9), (6, 10), (6, 11), (6, 12), (8, 13), (8, 14), (8, 15), (9, 16), (9, 17)] 
-    edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 7, 8, 9), 6: (10, 11, 12), 8: (13, 14, 15), 9: (16, 17)}
-    labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),7:MathTex('0').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('-2').flip(axis=UP),14:MathTex('8').flip(axis=UP),15:MathTex('6').flip(axis=UP),16:MathTex('-1').flip(axis=UP),17:MathTex('-6').flip(axis=UP),}
-    scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 7: 0, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: -2, 14: 8, 15: 6, 16: -1, 17: -6}
-    size = 18
+    edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 8), (4, 9), (6, 10), (6, 11), (6, 12), (8, 13), (8, 14), (8, 15), (9, 16), (9, 17), (9, 18)] 
+    edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 8, 9), 6: (10, 11, 12), 8: (13, 14, 15), 9: (16, 17, 18)}
+    labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('7').flip(axis=UP),14:MathTex('-2').flip(axis=UP),15:MathTex('-8').flip(axis=UP),16:MathTex('8').flip(axis=UP),17:MathTex('7').flip(axis=UP),18:MathTex('-4').flip(axis=UP),}
+    scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: 7, 14: -2, 15: -8, 16: 8, 17: 7, 18: -4}
+    size = 19
 
     def __init__(self, avg_branching_factor=0, max_depth=0, fixed_depth=True):
         if avg_branching_factor == 0 or max_depth == 0:
             return
         num_leaves = 0
-        leaf_offset = max(0, max_depth - 4) 
+        leaf_offset = max(0, max_depth - 4)
         if fixed_depth:
             leaf_offset = 0
         while num_leaves < (8 + leaf_offset) or num_leaves > (10 + leaf_offset):
@@ -108,6 +108,49 @@ def GetMinimaxTree(tree: Tree, side_to_move=1, current_node=1):
             minimax_tree.labels[nodeID] = MathTex(f"{minimax_tree.scores[nodeID]}").flip(axis=UP)
     return minimax_tree
 
+def FillTree(tree: Tree, is_minimax=False, side_to_move=1, current_node=1):
+
+    if is_minimax:
+        def Minimax(internal_tree: Tree, current_node: int, is_maximiser: bool):
+
+            if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+                internal_tree.labels[current_node] = MathTex(f"{internal_tree.scores[current_node]}").flip(axis=UP)
+                return internal_tree.scores[current_node]
+
+            if is_maximiser:
+                best_so_far = -10
+                for children_node in internal_tree.edges_dict[current_node]:
+                    best_so_far = max(best_so_far, Minimax(internal_tree, children_node, False))
+                    internal_tree.scores[current_node] = best_so_far
+                    internal_tree.labels[current_node] = MathTex(f"{best_so_far}").flip(axis=UP)
+            else:
+                best_so_far = 10
+                for children_node in internal_tree.edges_dict[current_node]:
+                    best_so_far = min(best_so_far, Minimax(internal_tree, children_node, True))
+                    internal_tree.scores[current_node] = best_so_far
+                    internal_tree.labels[current_node] = MathTex(f"{best_so_far}").flip(axis=UP)
+
+            return best_so_far
+        
+        
+        Minimax(tree, current_node, True)
+
+    else:
+        def Negamax(internal_tree: Tree, current_node: int, side_to_move: int):
+
+            if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+                return internal_tree.scores[current_node] 
+
+            best_so_far = -10
+            for children_node in internal_tree.edges_dict[current_node]:
+                best_so_far = max(best_so_far, -Negamax(internal_tree, children_node, -side_to_move))
+                internal_tree.scores[current_node] = best_so_far
+                internal_tree.labels[current_node] = MathTex(f"{best_so_far}").flip(axis=UP)
+
+            return best_so_far
+        
+        Negamax(tree, current_node, side_to_move)
+
 
 #Perfect move ordering (beta cutoff demo)
     # edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (5, 8), (5, 9), (6, 10), (6, 11), (7, 12), (7, 13), (7, 14), (9, 15), (9, 16)] 
@@ -141,4 +184,3 @@ class DisplayTree(Scene):
             labels=internal_tree.labels
         ).flip(axis=UP).move_to(RIGHT*0.5)
         self.add(displayed_tree)
-

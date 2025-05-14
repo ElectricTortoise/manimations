@@ -14,15 +14,6 @@ def NumToStr(num):
     else:
         return str(num)
 
-def MakeAlphaBeta(alpha, beta):
-    alpha = NumToStr(alpha)
-    beta = NumToStr(beta)
-    text = MathTex(fr"\alpha:{alpha}\\\beta:{beta}",
-                        substrings_to_isolate=(r"\alpha", r"\beta"))
-    text.set_color_by_tex(r"\alpha", RED)
-    text.set_color_by_tex(r"\beta", BLUE)
-    return text
-
 class Intro(Scene):
     def construct(self):
         intro = Tex("Minimax", font_size=96).shift(UP*2)
@@ -130,19 +121,307 @@ class AnimateMinimax(Scene):
 
         self.Minimax(displayed_minimax_tree, internal_tree, current_node=1, is_maximiser=True)
 
-        self.play(*[FadeOut(mobject) for mobject in self.mobjects], run_time=5)
+        self.play(*[FadeOut(edge) for edge in displayed_minimax_tree.edges.values()], run_time=2)
+        self.play(*[FadeOut(mobject) for mobject in self.mobjects], run_time=3)
 
-
-class AnimateNegamax(Scene):
+class AnimateNegamaxTree(Scene):
     RADIUS = 0.35
     VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
     LAYOUT_SCALE = (6, 3)
-    RECTANGLE_GROUP = []
+    
+    def Negamax(self, displayed_tree: Graph, internal_tree: Tree, current_node: int):
+        displayed_node = displayed_tree[current_node]
 
-    def AddRectangle(self, displayed_node, current_node, alpha, beta):
+        if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+            return internal_tree.scores[current_node]
+        
+
+        best_so_far = -10
+        initial_score_above_node = MathTex(r"-\infty")
+        for children_node in internal_tree.edges_dict[current_node]:
+            self.play(Indicate(displayed_tree.edges[(current_node, children_node)]))
+            child_score = self.Negamax(displayed_tree, internal_tree, children_node)
+            compared_score_above_node = MathTex(NumToStr(best_so_far) + r"\ vs\ " + NumToStr(child_score)).next_to(displayed_node, UP)
+            best_so_far = max(best_so_far, -child_score)
+            self.play(Transform(initial_score_above_node, compared_score_above_node))
+            self.wait(0.3)
+            self.play(Transform(initial_score_above_node, MathTex(NumToStr(best_so_far)).next_to(displayed_node, UP)))
+
+        self.play(Unwrite(initial_score_above_node))
+        self.play(FadeIn(MathTex(NumToStr(best_so_far)).move_to(displayed_node), scale=1.5))
+        return best_so_far
+    
+    def construct(self):
+
+        avg_branching_factor = 2
+        max_depth = 5
+
+        internal_tree = Tree()
+        FillTree(internal_tree, is_minimax=False)
+        displayed_negamax_tree = Graph([i for i in range(1, internal_tree.size)],
+            internal_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=self.LAYOUT_SCALE,
+            vertex_config=self.VERTEX_CONFIG,
+            labels=internal_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+
+        minimax_tree = GetMinimaxTree(internal_tree)
+        FillTree(minimax_tree, is_minimax=True)
+        displayed_minimax_tree = Graph([i for i in range(1, minimax_tree.size)],
+            minimax_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=self.LAYOUT_SCALE,
+            vertex_config=self.VERTEX_CONFIG,
+            labels=minimax_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+
+        maximiser_group = [VGroup(Rectangle(color=RED, height=8/max_depth, width=14+2/9, fill_opacity=0.5, stroke_width=0).shift((0, rect_offset*8/max_depth, 0)).set_z_index(-100), Tex("Max", color=RED).move_to((-6.5, rect_offset*8/max_depth, 0))) for rect_offset in range(-max_depth, max_depth) if rect_offset%2==0]
+
+        minimiser_group = [VGroup(Rectangle(color=BLUE, height=8/max_depth, width=14+2/9, fill_opacity=0.5, stroke_width=0).shift((0, rect_offset*8/max_depth, 0)).set_z_index(-100), Tex("Min", color=BLUE).move_to((-6.5, rect_offset*8/max_depth, 0))) for rect_offset in range(-max_depth, max_depth) if rect_offset%2==1]
+
+        self.next_section("Tree")
+        self.play(Write(displayed_minimax_tree), *[Write(maximiser) for maximiser in maximiser_group], *[Write(minimiser) for minimiser in minimiser_group])
+        self.wait(2)
+
+        me_group = [VGroup(Rectangle(color=GRAY_B, height=8/max_depth, width=14+2/9, fill_opacity=0.5, stroke_width=0).shift((0, rect_offset*8/max_depth, 0)).set_z_index(-100), Tex("Me", color=WHITE).move_to((-6.5, rect_offset*8/max_depth, 0))) for rect_offset in range(-max_depth, max_depth) if rect_offset%2==0]
+
+        opponent_group = [VGroup(Rectangle(color=GRAY_C, height=8/max_depth, width=14+2/9, fill_opacity=0.5, stroke_width=0).shift((0, rect_offset*8/max_depth, 0)).set_z_index(-100), Tex("Opponent", color=BLACK).move_to((-6, rect_offset*8/max_depth, 0))) for rect_offset in range(-max_depth, max_depth) if rect_offset%2==1]
+
+        self.play(*[ReplacementTransform(maximiser, me) for maximiser, me in zip(maximiser_group, me_group)], *[ReplacementTransform(minimiser, opponent) for minimiser, opponent in zip(minimiser_group, opponent_group)], ReplacementTransform(displayed_minimax_tree, displayed_negamax_tree))
+        self.wait(2)
+
+        my_POV = VGroup(Rectangle(color=GRAY_B, height=8, width=14+2/9, fill_opacity=0.5, stroke_width=0).set_z_index(-100), Tex("My perspective", color=WHITE).to_corner(UL))
+        opponent_POV = VGroup(Rectangle(color=GRAY_C, height=8, width=14+2/9, fill_opacity=0.5, stroke_width=0).set_z_index(-100), Tex("Opponent perspective", color=BLACK).to_corner(UL))
+
+        top_rect = me_group[-2].copy()
+        my_POV_tree = Tree()
+        FillTree(my_POV_tree, is_minimax=True)
+        displayed_my_POV_tree = Graph([i for i in range(1, my_POV_tree.size)],
+            my_POV_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=self.LAYOUT_SCALE,
+            vertex_config=self.VERTEX_CONFIG,
+            labels=my_POV_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+        print(my_POV_tree)
+        
+        displayed_negamax_tree_orig = displayed_negamax_tree.copy()
+        self.play(ReplacementTransform(top_rect, my_POV), ReplacementTransform(displayed_negamax_tree, displayed_my_POV_tree), *[FadeOut(me) for me in me_group if me != top_rect], *[FadeOut(opponent) for opponent in opponent_group])
+        self.wait()
+        
+        opponent_POV_tree = my_POV_tree
+        for node in opponent_POV_tree.scores:
+            opponent_POV_tree.scores[node] *= -1 
+            opponent_POV_tree.labels[node] = MathTex(NumToStr(opponent_POV_tree.scores[node])).flip(axis=UP)
+        print(opponent_POV_tree)
+        displayed_opponent_POV_tree = Graph([i for i in range(1, opponent_POV_tree.size)],
+            opponent_POV_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=self.LAYOUT_SCALE,
+            vertex_config=self.VERTEX_CONFIG,
+            labels=opponent_POV_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+        self.play(ReplacementTransform(my_POV, opponent_POV), ReplacementTransform(displayed_my_POV_tree, displayed_opponent_POV_tree))
+        top_rect = opponent_group[-2]
+        self.wait()
+
+        self.play(ReplacementTransform(opponent_POV, top_rect), ReplacementTransform(displayed_opponent_POV_tree, displayed_negamax_tree_orig), *[FadeIn(me) for me in me_group], *[FadeIn(opponent) for opponent in opponent_group if opponent != top_rect])
+
+        self.wait()
+        self.play(*[FadeOut(submobject) for submobject in self.mobjects])
+
+class AnimateNegamaxCode(Scene):
+    def construct(self):
+        #Chapter 2: Negamax
+        chapter_2 = Tex(r"\textbf{\underline{\Large Chapter 2}}\\~\\ Negamax")
+        self.play(FadeIn(chapter_2, scale=3), run_time=3)
+        self.wait(0.5)
+        self.play(FadeOut(chapter_2), run_time=2)
+
+        minimax_code = '''def Minimax(depth, current_node, is_maximiser: bool):
+    if depth == 0:
+        return GetScore(current_node)
+
+    if is_maximiser:
+        best_so_far = -math.inf
+        for children_node in current_node:
+            best_so_far = max(best_so_far, Minimax(depth - 1, children_node, False))
+    else:
+        best_so_far = math.inf
+        for children_node in current_node:
+            best_so_far = min(best_so_far, Minimax(depth - 1, children_node, True))
+
+    return best_so_far'''
+
+        rendered_minimax_code = Code(
+            code_string=minimax_code,
+            language="python",
+            add_line_numbers=False,
+            background="window",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        self.play(DrawBorderThenFill(rendered_minimax_code))
+        self.wait(2)
+
+        self.play(Indicate(rendered_minimax_code.code_lines[1:3]))
+        self.wait()
+
+        self.play(Indicate(rendered_minimax_code.code_lines[4:8]))
+        self.play(Indicate(rendered_minimax_code.code_lines[8:12]))
+        self.wait()
+
+        max_text = Tex("Max", color=RED).next_to(rendered_minimax_code, UP).align_to(rendered_minimax_code, LEFT).set_z_index(-150)
+        min_text = Tex("Min", color=BLUE).next_to(rendered_minimax_code, DOWN).align_to(rendered_minimax_code, LEFT).set_z_index(-150)
+        max_code = rendered_minimax_code.code_lines[4:8].copy()
+        min_code = rendered_minimax_code.code_lines[8:12].copy()
+        self.play(ReplacementTransform(max_code, max_text), ReplacementTransform(min_code, min_text))
+        self.wait()
+
+        self.play(Indicate(rendered_minimax_code.code_lines[7]), Indicate(rendered_minimax_code.code_lines[11]))
+        self.wait()
+
+
+        minimax_code_ab = '''def Minimax(depth, current_node, is_maximiser: bool, alpha=-math.inf, beta=math.inf):
+    if depth == 0:
+        return GetScore(current_node)
+
+    if is_maximiser:
+        best_so_far = -math.inf
+        for children_node in current_node:
+            best_so_far = max(best_so_far, Minimax(depth - 1, children_node, False))
+            alpha = max(best_so_far, alpha)
+            if alpha >= beta:
+                return best_so_far
+    else:
+        best_so_far = math.inf
+        for children_node in current_node:
+            best_so_far = min(best_so_far, Minimax(depth - 1, children_node, True))
+            beta = min(best_so_far, beta)
+            if alpha >= beta:
+                return best_so_far
+
+    return best_so_far'''
+        
+        rendered_minimax_code_ab = Code(
+            code_string=minimax_code_ab,
+            language="python",
+            add_line_numbers=False,
+            background="window",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        self.play(ReplacementTransform(rendered_minimax_code, rendered_minimax_code_ab), FadeOut(min_text), FadeOut(max_text))
+        self.wait()
+        self.play(Indicate(rendered_minimax_code_ab.code_lines[8]), Indicate(rendered_minimax_code_ab.code_lines[15]))
+        self.wait()
+
+        stm_negamax_code = '''def Negamax(depth, current_node, side_to_move):
+    if depth == 0:
+        return GetScore(current_node) * side_to_move
+
+    best_so_far = -math.inf
+    for children_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, children_node, -side_to_move))
+
+    return best_so_far'''
+        
+        rendered_stm_negamax_code = Code(
+            code_string=stm_negamax_code,
+            language="python",
+            add_line_numbers=False,
+            background="window",
+            paragraph_config={"width": 10, "height": 6}
+        )
+        
+        self.play(ReplacementTransform(rendered_minimax_code_ab, rendered_stm_negamax_code))
+        self.wait()
+
+        self.play(Indicate(rendered_stm_negamax_code.code_lines[6][-51:-2]))
+        self.wait()
+
+        max_text = Tex("Max", color=RED).next_to(rendered_stm_negamax_code, UP).align_to(rendered_stm_negamax_code, LEFT).set_z_index(-150)
+        min_text = Tex("Min", color=BLUE).next_to(rendered_stm_negamax_code, DOWN).align_to(rendered_stm_negamax_code, LEFT).set_z_index(-150)
+        self.play(FadeIn(max_text), FadeIn(min_text))
+        self.wait()
+        self.play(max_text.animate.move_to(rendered_stm_negamax_code).set_z_index(-150), min_text.animate.move_to(rendered_stm_negamax_code).set_z_index(-150))
+
+        self.wait()
+        self.play(Indicate(rendered_stm_negamax_code.code_lines[0][-14:-2]), Indicate(rendered_stm_negamax_code.code_lines[2][-12:]), Indicate(rendered_stm_negamax_code.code_lines[6][-14:-2]))
+
+        no_stm_negamax_code = '''def Negamax(depth, current_node):
+    if depth == 0:
+        return GetRelativeScore(current_node)
+
+    best_so_far = -math.inf
+    for children_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, children_node))
+
+    return best_so_far'''
+        
+        rendered_no_stm_negamax_code = Code(
+            code_string=no_stm_negamax_code,
+            language="python",
+            add_line_numbers=False,
+            background="window",
+            paragraph_config={"width": 10, "height": 6}
+        )
+        
+        self.wait()
+        self.play(Transform(rendered_stm_negamax_code, rendered_no_stm_negamax_code))
+        self.wait()
+        
+class AdditionalNegamaxScene(Scene):
+    def construct(self):
+        minimax_code_ab = '''def Minimax(depth, current_node, is_maximiser: bool, alpha=-math.inf, beta=math.inf):
+    if depth == 0:
+        return GetScore(current_node)
+
+    if is_maximiser:
+        best_so_far = -math.inf
+        for children_node in current_node:
+            best_so_far = max(best_so_far, Minimax(depth - 1, children_node, False))
+            alpha = max(best_so_far, alpha)
+            if alpha >= beta:
+                return best_so_far
+    else:
+        best_so_far = math.inf
+        for children_node in current_node:
+            best_so_far = min(best_so_far, Minimax(depth - 1, children_node, True))
+            beta = min(best_so_far, beta)
+            if alpha >= beta:
+                return best_so_far
+
+    return best_so_far'''
+        
+        rendered_minimax_code_ab = Code(
+            code_string=minimax_code_ab,
+            language="python",
+            add_line_numbers=False,
+            background="window",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        self.add(rendered_minimax_code_ab)
+        self.wait()
+        self.play(Indicate(rendered_minimax_code_ab.code_lines[9:11]), Indicate(rendered_minimax_code_ab.code_lines[16:18]))
+        self.wait()
+    
+class AnimateABNegamax(Scene):
+    RADIUS = 0.35
+    VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
+    LAYOUT_SCALE = (6, 3)
+    WINDOW_GROUP = []
+
+    def AddWindow(self, displayed_node, current_node, alpha, beta):
         rect_height = (self.RADIUS/10)*abs(beta-alpha)
 
-        rect = Rectangle(width=0.35, height=rect_height, stroke_width=1, fill_opacity=0.5).set_color([RED,BLUE]).next_to(displayed_node, LEFT*0.3).shift((0,(self.RADIUS/10)*((alpha+beta)/2),0))
+        rect = Rectangle(width=0.35, height=rect_height, stroke_width=1, fill_opacity=0.5).set_color([RED,BLUE]).next_to(displayed_node, LEFT*0.5).shift((0,(self.RADIUS/10)*((alpha+beta)/2),0))
         
         (sheen_direction, alpha_pos, beta_pos) = (UP, rect.get_bottom()+0.1*DOWN, rect.get_top()+0.1*UP) if alpha < beta else (DOWN, rect.get_top()+0.1*UP, rect.get_bottom()+0.1*DOWN)
         rect.set_sheen_direction(sheen_direction)
@@ -153,9 +432,17 @@ class AnimateNegamax(Scene):
         beta_tex.set_color_by_tex(r"\beta", BLUE)
 
         rect_group = VGroup(rect, alpha_tex, beta_tex)
-        self.RECTANGLE_GROUP[current_node] = rect_group
+        self.WINDOW_GROUP[current_node] = rect_group
 
     def ABNegamax(self, displayed_tree: Graph, internal_tree: Tree, text_list: list, current_node: int, side_to_move: int, alpha=-10, beta=10):
+        def MakeAlphaBeta(alpha, beta):
+            alpha = NumToStr(alpha)
+            beta = NumToStr(beta)
+            text = MathTex(fr"\alpha:{alpha}\\\beta:{beta}",
+                                substrings_to_isolate=(r"\alpha", r"\beta"))
+            text.set_color_by_tex(r"\alpha", RED)
+            text.set_color_by_tex(r"\beta", BLUE)
+            return text
 
         def WriteAlphaBeta(text_list, node, text: Mobject):
             if text_list[node] == None:
@@ -179,14 +466,18 @@ class AnimateNegamax(Scene):
                 alpha = best_so_far
             text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
             self.play(WriteAlphaBeta(text_list, current_node, text))
-            self.AddRectangle(displayed_node, current_node, alpha, beta)
+            self.AddWindow(displayed_node, current_node, alpha, beta)
             return best_so_far
+        
+        self.AddWindow(displayed_node, current_node, alpha, beta)
         
         for children_node in internal_tree.edges_dict[current_node]:
             text = MakeAlphaBeta(-beta, -alpha).scale(0.35).next_to(displayed_tree[children_node], LEFT*0.15)
             self.play(Indicate(displayed_tree.edges[(current_node, children_node)]), WriteAlphaBeta(text_list, children_node, text))
-
+        
             best_so_far = max(best_so_far, -self.ABNegamax(displayed_tree, internal_tree, text_list, children_node, -side_to_move, -beta, -alpha))
+            
+        
             if best_so_far > alpha:
                 alpha = best_so_far
 
@@ -206,15 +497,75 @@ class AnimateNegamax(Scene):
                 self.play(Create(Cross(scale_factor=self.RADIUS-0.1).move_to(displayed_tree.edges[(current_node, children_node)])) )
                 children_node += 1
             
-        self.AddRectangle(displayed_node, current_node, alpha, beta)
+        
 
         return best_so_far
             
     def construct(self):
-        pass
-        #Negamax
-        # self.next_section()
-        # displayed_tree = Graph([i for i in range(1, internal_tree.size)],
+        self.next_section("Intro")
+        chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
+
+        ab_chapter_text = Tex(r"Alpha-Beta Pruning", substrings_to_isolate=("Alpha","Beta")).next_to(chapter_3, DOWN)
+        self.play(FadeIn(chapter_3, scale=3), FadeIn(ab_chapter_text, shift=UP*2, scale=3), run_time=3)
+        self.wait(0.5)
+
+        self.play(FadeOut(chapter_3), ab_chapter_text.animate.set_color_by_tex(r"Alpha", RED).set_color_by_tex(r"Beta", BLUE).move_to((0,0,0)), run_time=2)
+        self.wait(18)
+
+        self.next_section("explain_ab")
+
+        alpha_text_1 = Tex("Alpha: Best score maximiser has guaranteed", substrings_to_isolate=("Alpha", "maximiser")).shift(UP).scale(1.2)
+        alpha_text_1.set_color_by_tex(r"Alpha", RED)
+        alpha_text_1.set_color_by_tex(r"maximiser", RED)
+        beta_text_1 = Tex("Beta: Best score minimiser has guaranteed", substrings_to_isolate=("Beta", "minimiser")).shift(DOWN).scale(1.2)
+        beta_text_1.set_color_by_tex(r"Beta", BLUE)
+        beta_text_1.set_color_by_tex(r"minimiser", BLUE)
+        ab_group_1 = VGroup(alpha_text_1, beta_text_1)
+
+        alpha_text_2 = Tex("Alpha: Best score side-to-move has guaranteed", substrings_to_isolate=("Alpha",)).shift(UP).scale(1.2)
+        alpha_text_2.set_color_by_tex(r"Alpha", RED)
+        beta_text_2 = Tex("Beta: Best score opponent has guaranteed", substrings_to_isolate=("Beta",)).shift(DOWN).scale(1.2)
+        beta_text_2.set_color_by_tex(r"Beta", BLUE)
+        ab_group_2 = VGroup(alpha_text_2, beta_text_2)
+
+        beta_text_3 = Tex("Beta: Maximum score opponent will allow us to have", substrings_to_isolate=("Beta",)).shift(DOWN).scale(1.2)
+        beta_text_3.set_color_by_tex(r"Beta", BLUE)
+
+        minimax_text = Tex("Minimax", font_size=96).to_edge(UP)
+        negamax_text = Tex("Negamax", font_size=96).to_edge(UP)
+
+
+        self.play(Write(minimax_text), TransformMatchingTex(ab_chapter_text, ab_group_1), run_time=4)
+        self.wait(5.5)
+        self.wait(2)
+
+        self.play(Transform(minimax_text, negamax_text))
+        self.wait(5.2)
+
+        self.play(TransformMatchingTex(ab_group_1, ab_group_2), run_time=4)
+        self.wait(3.8)
+
+        self.play(TransformMatchingTex(ab_group_2[1], beta_text_3), run_time=3)
+        self.wait(2.4)
+
+        self.next_section("window_ab")
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+        # internal_tree = Tree()
+        # displayed_tree = Graph([i for i in range(1, internal_tree.size) if i !=7],
         #     internal_tree.edges_list,
         #     layout="tree",
         #     layout_config={"root_vertex":1},
@@ -223,15 +574,14 @@ class AnimateNegamax(Scene):
         #     labels=internal_tree.labels
         # ).flip(axis=UP).move_to(RIGHT*0.5)
 
+
         # self.play(Write(displayed_tree))
 
-        # text_list = [None for _ in range(1, internal_tree.size)]
-        # self.RECTANGLE_GROUP = [None for _ in range(1, internal_tree.size)]
-        #self.ABNegamax(displayed_tree, internal_tree, text_list, current_node=1, side_to_move=1)
+        # text_list = [None for _ in range(1, internal_tree.size+1)]
+        # self.WINDOW_GROUP = [None for _ in range(1, internal_tree.size+1)]
+        # self.ABNegamax(displayed_tree, internal_tree, text_list, current_node=1, side_to_move=1)
 
-        #Window part
-        # self.next_section()
-        # self.play(*[ReplacementTransform(text, rectangle_group) for text, rectangle_group in zip(text_list, self.RECTANGLE_GROUP)])
+        # self.play(*[ReplacementTransform(text, rectangle_group) for text, rectangle_group in zip(text_list, self.WINDOW_GROUP)])
 
 
 
