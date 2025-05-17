@@ -6,6 +6,8 @@ import numpy as np
 import random as Rand
 from collections import deque
 
+config.max_files_cached = 200
+
 def NumToStr(num):
     if num == 10:
         return r"\infty"
@@ -13,7 +15,7 @@ def NumToStr(num):
         return r"-\infty"
     else:
         return str(num)
-
+    
 class Intro(Scene):
     def construct(self):
         intro = Tex("Minimax", font_size=96).shift(UP*2)
@@ -502,17 +504,19 @@ class AnimateABNegamax(Scene):
         return best_so_far
             
     def construct(self):
-        self.next_section("Intro")
-        chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
+        self.next_section("Intro", skip_animations=True)
 
+
+        chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
         ab_chapter_text = Tex(r"Alpha-Beta Pruning", substrings_to_isolate=("Alpha","Beta")).next_to(chapter_3, DOWN)
         self.play(FadeIn(chapter_3, scale=3), FadeIn(ab_chapter_text, shift=UP*2, scale=3), run_time=3)
         self.wait(0.5)
-
         self.play(FadeOut(chapter_3), ab_chapter_text.animate.set_color_by_tex(r"Alpha", RED).set_color_by_tex(r"Beta", BLUE).move_to((0,0,0)), run_time=2)
-        self.wait(18)
+        self.wait(5)
 
-        self.next_section("explain_ab")
+        self.next_section("explain_ab", skip_animations=True)
+
+
 
         alpha_text_1 = Tex("Alpha: Best score maximiser has guaranteed", substrings_to_isolate=("Alpha", "maximiser")).shift(UP).scale(1.2)
         alpha_text_1.set_color_by_tex(r"Alpha", RED)
@@ -522,47 +526,272 @@ class AnimateABNegamax(Scene):
         beta_text_1.set_color_by_tex(r"minimiser", BLUE)
         ab_group_1 = VGroup(alpha_text_1, beta_text_1)
 
-        alpha_text_2 = Tex("Alpha: Best score side-to-move has guaranteed", substrings_to_isolate=("Alpha",)).shift(UP).scale(1.2)
+        alpha_text_2 = Tex("Alpha: Best score side-to-move has guaranteed", substrings_to_isolate=("Alpha", "side-to-move")).shift(UP).scale(1.2)
         alpha_text_2.set_color_by_tex(r"Alpha", RED)
-        beta_text_2 = Tex("Beta: Best score opponent has guaranteed", substrings_to_isolate=("Beta",)).shift(DOWN).scale(1.2)
+        beta_text_2 = Tex("Beta: Best score opponent has guaranteed", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
         beta_text_2.set_color_by_tex(r"Beta", BLUE)
         ab_group_2 = VGroup(alpha_text_2, beta_text_2)
 
-        beta_text_3 = Tex("Beta: Maximum score opponent will allow us to have", substrings_to_isolate=("Beta",)).shift(DOWN).scale(1.2)
+        beta_text_3 = Tex("Beta: Maximum score opponent will allow us to have", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
         beta_text_3.set_color_by_tex(r"Beta", BLUE)
 
         minimax_text = Tex("Minimax", font_size=96).to_edge(UP)
         negamax_text = Tex("Negamax", font_size=96).to_edge(UP)
 
-
         self.play(Write(minimax_text), TransformMatchingTex(ab_chapter_text, ab_group_1), run_time=4)
         self.wait(5.5)
         self.wait(2)
-
-        self.play(Transform(minimax_text, negamax_text))
+        self.play(ReplacementTransform(minimax_text, negamax_text))
         self.wait(5.2)
-
-        self.play(TransformMatchingTex(ab_group_1, ab_group_2), run_time=4)
+        self.play(ReplacementTransform(ab_group_1, ab_group_2), run_time=4)
         self.wait(3.8)
+        self.play(ReplacementTransform(ab_group_2[1], beta_text_3), run_time=3)
+        self.wait(5)
 
-        self.play(TransformMatchingTex(ab_group_2[1], beta_text_3), run_time=3)
+        self.next_section("window_ab", skip_animations=True)
+
+
+
+        arrow_tip_length = 0.25
+        rect = Rectangle(height=4, width=3, stroke_width=1).set_color(GREEN)
+
+        #Windows
+        exact_window = rect.copy().set_fill(GREEN_E, opacity=0.3)
+        non_exact_windows = [
+            Rectangle(height=2, width=3, stroke_width=1).shift(UP*3).set_color(RED).set_fill(RED, opacity=0.2), 
+            Rectangle(height=2, width=3, stroke_width=1).shift(DOWN*3).set_color(RED).set_fill(RED, opacity=0.2)
+            ]
+        TOP_WINDOW = 0
+        BOTTOM_WINDOW = 1
+
+        #Flashing arrows
+        def ArrowAnimation(pos, direction, arrow_width=0.5, arrow_length = 0.8, arrow_tip_length = 0.4, arrow_shown_size = 0.25,run_time=1):
+            (arrow_aligned_edge, rect_aligned_edge) = (UP, DOWN) if direction == -1 else (DOWN, UP)
+            arrow = Polygon(
+                (-arrow_width/2,0,0),
+                (arrow_width/2,0,0),
+                (arrow_width/2,arrow_length*direction,0),
+                (arrow_width,arrow_length*direction,0),
+                (0,(arrow_tip_length+arrow_length)*direction,0),
+                (-arrow_width,arrow_length*direction,0),
+                (-arrow_width/2,arrow_length*direction,0)
+            ).move_to(pos, aligned_edge=arrow_aligned_edge).set_fill(WHITE, opacity=1)
+            intersection_shift = ValueTracker()
+            intersection_rectangle = Rectangle(height=arrow_shown_size, width=2*arrow_width)
+            arrow_animation = always_redraw(lambda: Intersection(arrow, 
+                                                                 intersection_rectangle.move_to(
+                                                                     pos+(0,intersection_shift.get_value(),0),
+                                                                     aligned_edge=rect_aligned_edge)).set_fill(WHITE, opacity=1))
+            self.add(arrow_animation)
+            self.play(
+                intersection_shift.animate.set_value((arrow_tip_length+arrow_length+arrow_shown_size)*direction), 
+                run_time=run_time
+                )
+        
+        #Text
+        alpha_tex = MathTex(r"\alpha", color=RED).next_to(rect, DOWN)
+        beta_tex = MathTex(r"\beta", color=BLUE).next_to(rect, UP)
+        exact_text = Tex("Exact scores", font_size=48).move_to((4.8,1,0))
+        non_exact_text = Tex("Non-exact scores", font_size=48).move_to((4.8,1,0))
+        true_score_text = Tex("True score", font_size=48, color=GREEN).next_to(exact_window, RIGHT)
+        upper_bound_score_text = Tex("Upper bound", font_size=48, color=RED).next_to(non_exact_windows[BOTTOM_WINDOW], RIGHT)
+        lower_bound_score_text = Tex("Lower bound", font_size=48, color=RED).next_to(non_exact_windows[TOP_WINDOW], RIGHT)
+                
+        #Arrows
+        exact_arrow = Arrow(
+            stroke_width=1.5, 
+            tip_length=arrow_tip_length, 
+            start=exact_text.get_bottom()+(0,-0.2,0), 
+            end=exact_window.get_right()
+        )
+        non_exact_arrow = [
+            Arrow(
+                stroke_width=1.5, 
+                tip_length=arrow_tip_length,
+                start=non_exact_text.get_top()+(0,0.2,0), 
+                end=exact_window.get_right()+(0,3,0)
+            ), 
+            Arrow(
+                stroke_width=1.5, 
+                tip_length=arrow_tip_length, 
+                start=non_exact_text.get_bottom()+(0,-0.2,0), 
+                end=exact_window.get_right()+(0,-3,0)
+            )
+        ]
+
+        #Updaters
+        dot_tracker = ValueTracker(0)
+        score_dot = Dot().add_updater(lambda m: m.move_to((0, dot_tracker.get_value(), 0)))
+
+        #Animations
+        self.play(*[FadeOut(mobject) for mobject in self.mobjects], Transform(alpha_text_2[0], alpha_tex), Transform(beta_text_3[0], beta_tex), run_time=2)
+        self.add(alpha_tex, beta_tex)
+        self.play(GrowFromCenter(rect))
+        self.play(FadeTransform(rect, exact_window))
+        self.play(Wiggle(alpha_tex, scale_value=1.5), run_time=1.9)
+        self.play(Wiggle(beta_tex, scale_value=1.5), run_time=2)
+        self.play(SpiralIn(score_dot.set_z_index(10)))
+        self.play(dot_tracker.animate.set_value(1.7), run_time=1.7)
+        self.wait(0.5)
+        self.play(
+            LaggedStart(
+                dot_tracker.animate.set_value(-1.1), 
+                AnimationGroup(
+                    Write(exact_text), 
+                    GrowArrow(exact_arrow)
+                ), 
+                lag_ratio=0.25, 
+                run_time=1.5
+            )
+        )
+        self.wait(0.2)
+        self.play(
+            LaggedStart(
+                AnimationGroup(
+                    dot_tracker.animate.set_value(-3.6), 
+                    DrawBorderThenFill(non_exact_windows[TOP_WINDOW]), 
+                    DrawBorderThenFill(non_exact_windows[BOTTOM_WINDOW]), 
+                    FadeOut(exact_window), 
+                    alpha_tex.animate.move_to(exact_window.get_corner(DL)).shift(LEFT*0.5), 
+                    beta_tex.animate.move_to(exact_window.get_corner(UL)).shift(LEFT*0.5)
+                ),
+                AnimationGroup(
+                    ReplacementTransform(exact_text, non_exact_text), 
+                    ReplacementTransform(exact_arrow, non_exact_arrow[0]), 
+                    ReplacementTransform(exact_arrow.copy(), non_exact_arrow[1])
+                ), 
+            lag_ratio=0.2
+            )
+        )
+        self.play(dot_tracker.animate.set_value(-2.5), run_time=0.8, rate_func=rate_functions.ease_in_sine)
+        self.play(dot_tracker.animate.set_value(2.8), run_time=0.4, rate_func=rate_functions.linear)
+        self.play(dot_tracker.animate.set_value(3.2), run_time=0.7, rate_func=rate_functions.ease_out_sine)
+        self.wait(0.3)
+        self.play(FadeIn(exact_window), dot_tracker.animate.set_value(0), FadeOut(non_exact_arrow[0]), FadeOut(non_exact_arrow[1]), run_time=1.6)
+        self.play(ReplacementTransform(non_exact_text, true_score_text), run_time=1.7)
+        self.wait(2)
+        self.play(Write(upper_bound_score_text), Write(lower_bound_score_text), run_time=2.5)
+        self.wait(1.5)
+        self.play(dot_tracker.animate.set_value(-2.5), run_time=1.6)
+        self.wait()
+        self.play(Wiggle(upper_bound_score_text), run_time=1.9)
+        self.wait(1.7)
+        ArrowAnimation(score_dot.get_center()+0.15*DOWN, -1)
+        self.wait(1.4)
+        self.play(dot_tracker.animate.set_value(2.5), run_time=1.3)
+        self.wait(0.2)
+        ArrowAnimation(score_dot.get_center()+0.15*UP, 1)
+        self.wait(1.2)
+        self.wait(2.9)
+        self.play(FadeOut(score_dot), run_time=1.6)
+        self.wait(1.2)
+        self.play(*[non_exact_window.animate.set_fill(opacity=0.5) for non_exact_window in non_exact_windows], run_time=1.6)
+        self.wait(1.4)
+        dot_tracker.set_value(0)
+        self.play(FadeIn(score_dot), run_time=1.4)
+        self.wait()
+        self.play(ShowPassingFlash(exact_window.copy().set_fill(opacity=0).set_stroke(GREEN,5), time_width=0.2), run_time=1.3)
+        self.wait(1.2)
+        self.play(Unwrite(score_dot), *[non_exact_window.animate.set_fill(opacity=0.2) for non_exact_window in non_exact_windows])
+        self.wait(5)
+
+        self.next_section("fail_low_fail_high", skip_animations=True)
+
+
+
+        #Score dots
+        score_dots_exact = VGroup(
+            Dot((0, -1.0, 0)),
+            Dot((0, -2.9, 0)),
+            Dot((0, -1.1, 0)),
+            Dot((0, -3.3, 0)),
+            Dot((0, 0.7, 0)),
+            Dot((0, 1.3, 0)),
+            Dot((0, -0.2, 0)),
+            Dot((0, -2.3, 0)),
+        )
+        score_dots_fail_high = VGroup(
+            Dot((0, -2.8, 0)),
+            Dot((0, 1.5, 0)),
+            Dot((0, -2.5, 0)),
+            Dot((0, -1.7, 0)),
+            Dot((0, 2.8, 0)),
+        )
+        score_dots_fail_low = VGroup(
+            Dot((0, -3.0, 0)),
+            Dot((0, -2.9, 0)),
+            Dot((0, -3.9, 0)),
+            Dot((0, -2.1, 0)),
+            Dot((0, -3.4, 0)),
+        )
+
+        #Text
+        fail_low_text = Tex("Fail low", font_size=48, color=RED).to_corner(UL)
+        fail_high_text = Tex("Fail high", font_size=48, color=BLUE).to_corner(UL)
+        stop_searching_text = Tex("Stop searching").move_to((4.5,1.2,0))
+
+        #Arrow
+        stop_searching_arrow = Arrow(start=stop_searching_text.get_left(), end=score_dots_fail_high[-1].get_corner(DR))
+
+        #Animation
+        self.play(LaggedStart(*[SpiralIn(dot) for dot in score_dots_exact], lag_ratio=0.5), run_time=2.8)
+        self.wait(0.2)
+        self.play(Flash(score_dots_exact[5]), run_time=0.8)
+        self.wait(0.2)
+        self.play(FadeOut(score_dots_exact), run_time=0.8)
+        self.play(LaggedStart(*[SpiralIn(dot) for dot in score_dots_fail_low], lag_ratio=0.5), run_time=1.7)
+        self.wait(0.2)
+        self.play(LaggedStart(Flash(score_dots_fail_low[3]), Write(fail_low_text), FadeOut(score_dots_fail_low), lag_ratio=0.75), run_time=2.3)
+        self.wait(0.2)
+        self.play(LaggedStart(*[SpiralIn(dot) for dot in score_dots_fail_high], lag_ratio=0.5), run_time=1.7)
+        self.wait(0.2)
+        self.play(LaggedStart(Flash(score_dots_fail_high[-1]), ReplacementTransform(fail_low_text, fail_high_text), lag_ratio=0.75), run_time=2.3)
+        self.wait()
+        self.play(Write(stop_searching_arrow), run_time=1.9)
+        self.play(Write(stop_searching_text), run_time=1.9)
+        self.wait(2)
+        self.play(ShowPassingFlash(non_exact_windows[TOP_WINDOW].copy().set_stroke(width=5).set_fill(opacity=0)), run_time=1.3)
+        self.wait(2.3)
+        self.play(LaggedStart(*[score_dots_fail_high[i].animate(rate_func=rate_functions.wiggle).shift(RIGHT*0.2) for i in [1,3,2,0]]), run_time=2.4)
+        self.wait(4)
+        self.play(Flash(score_dots_fail_high[-1]), run_time=1.5)
+        self.wait(5)
+        self.play(score_dots_fail_high[:-1].animate.set_opacity(0.2), run_time=1.5)
+        self.wait(0.7)
+        ArrowAnimation(score_dots_fail_high[-1].get_center()+UP*0.15, 1, run_time=1.8)
         self.wait(2.4)
+        self.play(Wiggle(lower_bound_score_text), run_time=2)
+        self.wait()
+        self.play(Unwrite(score_dots_fail_high), Unwrite(stop_searching_arrow), Unwrite(stop_searching_text), Unwrite(fail_high_text))
+        self.play(LaggedStart(*[SpiralIn(dot) for dot in score_dots_exact[:2]], lag_ratio=0.5), run_time=1.2)
+        self.wait(2.5)
+        self.play(LaggedStart(*[SpiralIn(dot) for dot in score_dots_exact[2:]], lag_ratio=0.5), run_time=3.6)
+        self.wait(0.6)
+        self.play(Flash(score_dots_exact[5]), run_time=1.5)
+        self.wait(5)
 
-        self.next_section("window_ab")
-
-
-
-
-
-
-
-
+        self.next_section()
 
 
 
 
 
         
+
+
+        
+
+        
+
+
+
+
+
+
+
+
+
+
 
         # internal_tree = Tree()
         # displayed_tree = Graph([i for i in range(1, internal_tree.size) if i !=7],
