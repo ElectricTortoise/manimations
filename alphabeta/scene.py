@@ -6,8 +6,6 @@ import numpy as np
 import random as Rand
 from collections import deque
 
-config.max_files_cached = 200
-
 def NumToStr(num):
     if num == 10:
         return r"\infty"
@@ -415,94 +413,6 @@ class AdditionalNegamaxScene(Scene):
         self.wait()
     
 class AnimateABNegamax(Scene):
-    RADIUS = 0.35
-    VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
-    LAYOUT_SCALE = (6, 3)
-    WINDOW_GROUP = []
-
-    def AddWindow(self, displayed_node, current_node, alpha, beta):
-        rect_height = (self.RADIUS/10)*abs(beta-alpha)
-
-        rect = Rectangle(width=0.35, height=rect_height, stroke_width=1, fill_opacity=0.5).set_color([RED,BLUE]).next_to(displayed_node, LEFT*0.5).shift((0,(self.RADIUS/10)*((alpha+beta)/2),0))
-        
-        (sheen_direction, alpha_pos, beta_pos) = (UP, rect.get_bottom()+0.1*DOWN, rect.get_top()+0.1*UP) if alpha < beta else (DOWN, rect.get_top()+0.1*UP, rect.get_bottom()+0.1*DOWN)
-        rect.set_sheen_direction(sheen_direction)
-        
-        alpha_tex = MathTex(fr"\alpha:{NumToStr(alpha)}", substrings_to_isolate=(r"\alpha",)).scale(0.35).move_to(alpha_pos)
-        alpha_tex.set_color_by_tex(r"\alpha", RED)
-        beta_tex = MathTex(fr"\beta:{NumToStr(beta)}", substrings_to_isolate=(r"\beta",)).scale(0.35).move_to(beta_pos)
-        beta_tex.set_color_by_tex(r"\beta", BLUE)
-
-        rect_group = VGroup(rect, alpha_tex, beta_tex)
-        self.WINDOW_GROUP[current_node] = rect_group
-
-    def ABNegamax(self, displayed_tree: Graph, internal_tree: Tree, text_list: list, current_node: int, side_to_move: int, alpha=-10, beta=10):
-        def MakeAlphaBeta(alpha, beta):
-            alpha = NumToStr(alpha)
-            beta = NumToStr(beta)
-            text = MathTex(fr"\alpha:{alpha}\\\beta:{beta}",
-                                substrings_to_isolate=(r"\alpha", r"\beta"))
-            text.set_color_by_tex(r"\alpha", RED)
-            text.set_color_by_tex(r"\beta", BLUE)
-            return text
-
-        def WriteAlphaBeta(text_list, node, text: Mobject):
-            if text_list[node] == None:
-                text_list[node] = text
-                return Write(text)
-            else:
-                return Transform(text_list[current_node], text)
-
-        if current_node == 1:
-            text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_tree[1], LEFT*0.15)
-            self.play(WriteAlphaBeta(text_list, 1, text))
-
-        best_so_far = -10
-
-        #Display parent's ab values
-        displayed_node = displayed_tree[current_node]
-
-        if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
-            best_so_far = internal_tree.scores[current_node]
-            if best_so_far > alpha:
-                alpha = best_so_far
-            text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
-            self.play(WriteAlphaBeta(text_list, current_node, text))
-            self.AddWindow(displayed_node, current_node, alpha, beta)
-            return best_so_far
-        
-        self.AddWindow(displayed_node, current_node, alpha, beta)
-        
-        for children_node in internal_tree.edges_dict[current_node]:
-            text = MakeAlphaBeta(-beta, -alpha).scale(0.35).next_to(displayed_tree[children_node], LEFT*0.15)
-            self.play(Indicate(displayed_tree.edges[(current_node, children_node)]), WriteAlphaBeta(text_list, children_node, text))
-        
-            best_so_far = max(best_so_far, -self.ABNegamax(displayed_tree, internal_tree, text_list, children_node, -side_to_move, -beta, -alpha))
-            
-        
-            if best_so_far > alpha:
-                alpha = best_so_far
-
-            text = MakeAlphaBeta(alpha, beta).scale(0.35).next_to(displayed_node, LEFT*0.15)
-            self.play(Indicate(displayed_tree.edges[(current_node, children_node)]), WriteAlphaBeta(text_list, current_node, text))
-            beta_cutoff = False
-
-            if alpha >= beta:
-                beta_cutoff = True
-                break
-            
-        self.play(FadeIn(MathTex(NumToStr(best_so_far)).move_to(displayed_node), scale=1.5))
-
-        if beta_cutoff:
-            children_node += 1
-            while(children_node in internal_tree.edges_dict[current_node]):
-                self.play(Create(Cross(scale_factor=self.RADIUS-0.1).move_to(displayed_tree.edges[(current_node, children_node)])) )
-                children_node += 1
-            
-        
-
-        return best_so_far
-            
     def construct(self):
         self.next_section("Intro", skip_animations=True)
 
@@ -697,8 +607,6 @@ class AnimateABNegamax(Scene):
 
         self.next_section("fail_low_fail_high", skip_animations=True)
 
-
-
         #Score dots
         score_dots_exact = VGroup(
             Dot((0, -1.0, 0)),
@@ -770,47 +678,373 @@ class AnimateABNegamax(Scene):
         self.play(Flash(score_dots_exact[5]), run_time=1.5)
         self.wait(5)
 
-        self.next_section()
+        self.next_section("ab_code", skip_animations=False)
 
+        code_negamax = '''def Negamax(depth, current_node, side_to_move):
+    if depth == 0:
+        return GetScore(current_node) * side_to_move
 
+    best_so_far = -math.inf
+    for child_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, child_node, -side_to_move))
 
-
-
+    return best_so_far'''
         
+        code_ab_1 = '''def Negamax(depth, current_node, side_to_move, alpha, beta):
+    if depth == 0:
+        return GetScore(current_node) * side_to_move
 
+    best_so_far = -math.inf
+    for child_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, child_node, -side_to_move))
 
+    return best_so_far'''
         
+        code_ab_2 = '''def Negamax(depth, current_node, side_to_move, alpha, beta):
+    if depth == 0:
+        return GetScore(current_node) * side_to_move
 
+    best_so_far = -math.inf
+    for child_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, child_node, -side_to_move, alpha,   beta))
+ 
+    return best_so_far'''
         
+        code_ab_3 = '''def Negamax(depth, current_node, side_to_move, alpha, beta):
+    if depth == 0:
+        return GetScore(current_node) * side_to_move
+
+    best_so_far = -math.inf
+    for child_node in current_node:
+        best_so_far = max(best_so_far, -Negamax(depth - 1, child_node, -side_to_move, -beta, -alpha))
+
+        if best_so_far > alpha:
+            alpha = best_so_far
+
+        if best_so_far > beta:
+            break
+        
+    return best_so_far'''
+        
+        rendered_code_negamax = Code(
+            code_string=code_negamax,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        rendered_code_ab_1 = Code(
+            code_string=code_ab_1,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        rendered_code_ab_2 = Code(
+            code_string=code_ab_2,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        rendered_code_ab_3 = Code(
+            code_string=code_ab_3,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width": 10, "height": 6}
+        )
+
+        alpha = rendered_code_ab_2.code_lines[6][-16:-10]
+        beta = rendered_code_ab_2.code_lines[6][-8:-2]
+        alpha_path = ArcBetweenPoints(start=alpha[-1].get_corner(DR), end=beta[-1].get_corner(DR))
+        beta_path = ArcBetweenPoints(start=beta[-1].get_corner(DR), end=alpha[-1].get_corner(DR))
+        alpha_path = alpha_path.shift(alpha.get_center() - alpha_path.get_start())
+        beta_path = beta_path.shift(beta.get_center() - beta_path.get_start())
+        alpha_clone = rendered_code_ab_3.code_lines[6][-7:-2]
+        beta_clone = rendered_code_ab_3.code_lines[6][-14:-10]
+        alpha_negative_clone = rendered_code_ab_3.code_lines[6][-8]
+        beta_negative_clone = rendered_code_ab_3.code_lines[6][-15]
+
+        self.clear()
+        self.wait(0.2)
+        self.add(rendered_code_negamax)
+        self.wait(3.4)
+        self.play(ReplacementTransform(rendered_code_negamax, rendered_code_ab_1), run_time=2)
+        self.wait(3.6)
+        self.play(ReplacementTransform(rendered_code_ab_1, rendered_code_ab_2), run_time=2)
+        self.wait(0.7)
+        self.wait(2.4)
+        self.play(MoveAlongPath(alpha, alpha_path), MoveAlongPath(beta, beta_path), run_time=1.4)
+
+        alpha_negative_sign = rendered_code_ab_2.code_lines[6][-30].copy().next_to(alpha[1], LEFT, buff=0.02)
+        beta_negative_sign = rendered_code_ab_2.code_lines[6][-30].copy().next_to(beta[2], LEFT, buff=0.02)
+        
+        self.play(Write(alpha_negative_sign), Write(beta_negative_sign), run_time=1.4)
+        self.wait()
+        self.play(Indicate(beta), Indicate(beta_negative_sign), run_time=2)
+        self.wait()
+        self.play(Indicate(alpha), Indicate(alpha_negative_sign), run_time=2)
+        self.wait(5)
+        self.play(
+            rendered_code_ab_2.background.animate.stretch(1.5, 1), 
+            Transform(beta, beta_clone),
+            Transform(alpha, alpha_clone),
+            Transform(beta_negative_sign, beta_negative_clone),
+            Transform(alpha_negative_sign, alpha_negative_clone),
+            rendered_code_ab_2.code_lines[:-1].animate.move_to((0, (rendered_code_ab_2.height*1.5 - rendered_code_ab_2.code_lines.height)/2-0.0935, 0)),
+            rendered_code_ab_2.code_lines[-1].animate.move_to((rendered_code_ab_2.code_lines[-1].get_x(), rendered_code_ab_3.code_lines[-1].get_y(), 0))
+        )
+        self.play(Write(rendered_code_ab_3.code_lines[-8:-5]), run_time=2)
+        self.wait(1.4)
+        self.play(Circumscribe(rendered_code_ab_3.code_lines[-7][11:], buff=0.02, stroke_width=1))
+        self.wait(1.6)
+        self.wait(8.6)
+        self.play(Indicate(rendered_code_ab_3.code_lines[-6]))
+        self.wait(0.6)
+        self.play(Write(rendered_code_ab_3.code_lines[-4:-2], run_time=2))
+        self.wait()
+        self.wait()
+        self.play(Indicate(rendered_code_ab_3.code_lines[-3]))
+        self.wait(2)
+        self.wait(5)
 
 
+        self.next_section("ab_tree", skip_animations=True)
 
+        RADIUS = 0.35
+        VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
+        LAYOUT_SCALE = (6, 3)
 
+        RECT=0
+        ALPHA_TEX=1
+        BETA_TEX=2
+        NEGATIVE_ALPHA_TEX=3
+        NEGATIVE_BETA_TEX=4
+        global_window_group_list = []
 
+        def ABNegamax(displayed_tree: Graph, internal_tree: Tree, parent_node:int, current_node: int, side_to_move: int, alpha=-10, beta=10):
+            
+            def AddWindow(displayed_node, current_node, alpha, beta):
+                window_height = (RADIUS/10)*abs(beta-alpha)
 
+                window = Rectangle(width=RADIUS, height=window_height, stroke_width=1, fill_opacity=0.5).set_color(
+                    GREEN).next_to(displayed_node, LEFT*0.5).shift((0,(RADIUS/10)*((alpha+beta)/2),0))
+                
+                (alpha_pos, beta_pos) = (window.get_bottom()+0.1*DOWN, window.get_top()+0.1*UP) if alpha < beta else (window.get_top()+0.1*UP, window.get_bottom()+0.1*DOWN)
+                
+                
+                alpha_tex = MathTex(fr"\alpha:{NumToStr(alpha)}", substrings_to_isolate=(r"\alpha",":","-")).scale(0.35).move_to(alpha_pos)
+                alpha_tex.set_color_by_tex(r"\alpha", RED)
+                beta_tex = MathTex(fr"\beta:{NumToStr(beta)}", substrings_to_isolate=(r"\beta",":","-")).scale(0.35).move_to(beta_pos)
+                beta_tex.set_color_by_tex(r"\beta", BLUE)
+                negative_alpha_tex = MathTex(fr"-\alpha:{NumToStr(beta)}", substrings_to_isolate=(r"\alpha",":","-")).scale(0.35).move_to(beta_pos)
+                negative_alpha_tex.set_color_by_tex(r"\alpha", RED)
+                negative_beta_tex = MathTex(fr"-\beta:{NumToStr(alpha)}", substrings_to_isolate=(r"\beta",":","-")).scale(0.35).move_to(alpha_pos)
+                negative_beta_tex.set_color_by_tex(r"\beta", BLUE)
 
+                window_group = VGroup(window, alpha_tex, beta_tex, negative_alpha_tex, negative_beta_tex)
+                global_window_group_list[current_node] = window_group
 
+            def AnimateAlphaBeta(parent_node, child_node, run_time=1):
+                current_window_group = global_window_group_list[parent_node].copy()
+                child_window_group = global_window_group_list[child_node]
 
+                self.play(
+                    ShowPassingFlash(displayed_tree.edges[(parent_node, child_node)].copy().set_stroke(width=5,color=YELLOW)),
+                    ReplacementTransform(current_window_group[RECT], child_window_group[RECT]),
+                    TransformMatchingTex(current_window_group[ALPHA_TEX], child_window_group[BETA_TEX]),
+                    TransformMatchingTex(current_window_group[BETA_TEX], child_window_group[ALPHA_TEX]),
+                    run_time=run_time
+                )
 
+            def AnimateReturnAlphaBeta(parent_node, child_node, best_so_far, displayed_best_so_far, exact=False, run_time=1):
+                if parent_node == child_node:
+                    return
+                
+                orig_parent_window_group = global_window_group_list[parent_node]
+                new_parent_window_group = global_window_group_list[parent_node+internal_tree.size]
 
-        # internal_tree = Tree()
-        # displayed_tree = Graph([i for i in range(1, internal_tree.size) if i !=7],
-        #     internal_tree.edges_list,
-        #     layout="tree",
-        #     layout_config={"root_vertex":1},
-        #     layout_scale=self.LAYOUT_SCALE,
-        #     vertex_config=self.VERTEX_CONFIG,
-        #     labels=internal_tree.labels
-        # ).flip(axis=UP).move_to(RIGHT*0.5)
+                color = RED if best_so_far > 0 else BLUE
+                dot = Dot(radius=0.04, color=color).next_to(displayed_tree[parent_node]).shift((0,(RADIUS/10)*(-best_so_far),0))
+                dot.move_to((orig_parent_window_group[RECT].get_x(), dot.get_y(), 0))
+                dot_tex = Tex(f"{-best_so_far}", font_size=10, color=color).next_to(dot, LEFT)
+                dot_group = VGroup(dot, dot_tex)
 
+                if exact:
+                    self.play(
+                        ShowPassingFlash(displayed_tree.edges[(parent_node, child_node)].copy().reverse_direction().set_stroke(width=5,color=YELLOW)),
+                        Write(
+                            Line(
+                                start=orig_parent_window_group[RECT].get_corner(DL), 
+                                end=orig_parent_window_group[RECT].get_corner(DR), 
+                                color=GREEN).set_z_index(-10)
+                        ),
+                        Transform(orig_parent_window_group[RECT], new_parent_window_group[RECT]),
+                        ReplacementTransform(displayed_best_so_far.copy(), dot_group),
+                        run_time=run_time
+                    )
+                else:
+                    self.play(
+                        ShowPassingFlash(displayed_tree.edges[(parent_node, child_node)].copy().reverse_direction().set_stroke(width=5,color=YELLOW)),
+                        ReplacementTransform(displayed_best_so_far.copy(), dot_group), 
+                        run_time=run_time
+                    )
 
-        # self.play(Write(displayed_tree))
+            displayed_node = displayed_tree[current_node]
+            AddWindow(displayed_node, current_node, alpha, beta)
+            exact = False
 
-        # text_list = [None for _ in range(1, internal_tree.size+1)]
-        # self.WINDOW_GROUP = [None for _ in range(1, internal_tree.size+1)]
-        # self.ABNegamax(displayed_tree, internal_tree, text_list, current_node=1, side_to_move=1)
+            #Start negamaxing
+            if current_node == 1:
+                self.wait(8)
+                self.play(Write(global_window_group_list[current_node][RECT]))
+                self.wait()
+                self.play(Write(global_window_group_list[current_node][ALPHA_TEX]))
+                self.wait()
+                self.play(Write(global_window_group_list[current_node][BETA_TEX]))
+                self.wait(10.7)
+            elif current_node == 2:
+                current_window_group = global_window_group_list[parent_node].copy()
+                child_window_group = global_window_group_list[current_node]
 
-        # self.play(*[ReplacementTransform(text, rectangle_group) for text, rectangle_group in zip(text_list, self.WINDOW_GROUP)])
+                self.play(
+                    ShowPassingFlash(displayed_tree.edges[(parent_node, current_node)].copy().set_stroke(width=5,color=YELLOW)),
+                    ReplacementTransform(current_window_group[RECT], child_window_group[RECT]),
+                    current_window_group[ALPHA_TEX].animate.move_to(child_window_group[BETA_TEX]),
+                    current_window_group[BETA_TEX].animate.move_to(child_window_group[ALPHA_TEX]),
+                    run_time=1.5
+                )
+                self.play(
+                    TransformMatchingTex(current_window_group[ALPHA_TEX], child_window_group[NEGATIVE_ALPHA_TEX]),
+                    TransformMatchingTex(current_window_group[BETA_TEX], child_window_group[NEGATIVE_BETA_TEX]),
+                    run_time=1.5
+                )
+                self.play(
+                    TransformMatchingTex(child_window_group[NEGATIVE_ALPHA_TEX], child_window_group[BETA_TEX]),
+                    TransformMatchingTex(child_window_group[NEGATIVE_BETA_TEX], child_window_group[ALPHA_TEX]),
+                    run_time=1.5
+                )
+                self.wait(1.7)
+            else:
+                AnimateAlphaBeta(parent_node, current_node)
+            best_so_far = -10
+
+            if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+                best_so_far = internal_tree.scores[current_node]
+                displayed_best_so_far = MathTex(NumToStr(best_so_far)).move_to(displayed_node)
+                if best_so_far > alpha and best_so_far < beta:
+                    exact = True
+                AddWindow(displayed_tree[parent_node], parent_node+internal_tree.size, -best_so_far, -alpha)
+                if current_node == 2:
+                    dot = Dot(radius=0.04, color=RED).next_to(displayed_tree[parent_node]).shift((0,(RADIUS/10)*(-best_so_far),0))
+                    dot.move_to((global_window_group_list[parent_node][RECT].get_x(), dot.get_y(), 0))
+                    six_tex = Tex("6", font_size=10, color=RED).next_to(dot, LEFT)
+                    dot_group = VGroup(dot, six_tex)
+                    self.play(
+                        ShowPassingFlash(displayed_tree.edges[(parent_node, current_node)].copy().reverse_direction().set_stroke(width=5,color=YELLOW)),
+                        ReplacementTransform(displayed_best_so_far.copy(), dot_group)
+                    )
+                    self.wait(1.7)
+                    self.play(Indicate(global_window_group_list[parent_node][ALPHA_TEX]), run_time=1.9)
+                    self.wait(6.3)
+                    line_start = global_window_group_list[parent_node][RECT].get_corner(DL)
+                    line_end = global_window_group_list[parent_node][RECT].get_corner(DR)
+                    self.play(
+                        ReplacementTransform(global_window_group_list[parent_node][RECT], global_window_group_list[parent_node+internal_tree.size][RECT]),
+                        run_time=2
+                    )
+                    self.wait(1.2)
+                    self.play(GrowFromCenter(
+                            Line(
+                                start=line_start,
+                                end=line_end, 
+                                color=GREEN
+                            )
+                        ),
+                        run_time=1.5
+                    )
+                    self.wait(2.8)
+                    self.next_section("beta_cutoff", skip_animations=True)
+                    return best_so_far
+
+                    dot = Dot(radius=0.04, color=RED).next_to(displayed_tree[parent_node]).shift((0,(RADIUS/10)*(-best_so_far),0))
+                    dot.move_to((global_window_group_list[parent_node][RECT].get_x(), dot.get_y(), 0))
+                    six_tex = Tex("6", font_size=16, color=RED).next_to(dot, DOWN, buff=0.08)
+                    dot_group = VGroup(dot, six_tex)
+                    self.play(
+                        ShowPassingFlash(displayed_tree.edges[(parent_node, current_node)].copy().reverse_direction().set_stroke(width=5,color=YELLOW)),
+                        ReplacementTransform(displayed_best_so_far.copy(), dot_group)
+                    )
+                    self.wait(1.7)
+                    self.play(Indicate(global_window_group_list[parent_node][ALPHA_TEX]), run_time=1.9)
+                    self.wait(6.3)
+                    line_start = global_window_group_list[parent_node][RECT].get_corner(DL)
+                    line_end = global_window_group_list[parent_node][RECT].get_corner(DR)
+                    self.play(
+                        ReplacementTransform(global_window_group_list[parent_node][RECT], global_window_group_list[parent_node+internal_tree.size][RECT]),
+                        run_time=2
+                    )
+                    self.wait(1.2)
+                    self.play(GrowFromCenter(
+                            Line(
+                                start=line_start,
+                                end=line_end, 
+                                color=GREEN
+                            )
+                        ),
+                        run_time=1.5
+                    )
+                    self.wait(2.8)
+                    self.next_section("beta_cutoff")
+                    return best_so_far
+                AnimateReturnAlphaBeta(parent_node, current_node, best_so_far, displayed_best_so_far, exact)
+                return best_so_far
+            
+            for children_node in internal_tree.edges_dict[current_node]:
+                best_so_far = max(best_so_far, -ABNegamax(displayed_tree, internal_tree, current_node, children_node, -side_to_move, -beta, -alpha))
+                AddWindow(displayed_node, current_node+internal_tree.size, -best_so_far, beta)
+                if best_so_far > alpha:
+                    alpha = best_so_far
+                    exact = True
+                beta_cutoff = False
+                if alpha >= beta:
+                    beta_cutoff = True
+                    exact = False
+                    break
+                
+            displayed_best_so_far = MathTex(NumToStr(best_so_far)).move_to(displayed_node)
+            self.play(FadeIn(displayed_best_so_far, scale=1.5))
+
+            if beta_cutoff:
+                children_node += 1
+                while(children_node in internal_tree.edges_dict[current_node]):
+                    self.play(Create(Cross(scale_factor=RADIUS-0.1).move_to(displayed_tree.edges[(current_node, children_node)])) )
+                    children_node += 1
+                            
+            AnimateReturnAlphaBeta(parent_node, current_node, best_so_far, displayed_best_so_far, exact)
+
+            return best_so_far
+                
+
+        internal_tree = Tree()
+        displayed_tree = Graph([i for i in range(1, internal_tree.size) if i !=7],
+            internal_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=LAYOUT_SCALE,
+            vertex_config=VERTEX_CONFIG,
+            labels=internal_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+
+        self.play(*[FadeOut(submobject) for submobject in self.mobjects], run_time=3.5)
+        self.play(Write(displayed_tree))
+
+        global_window_group_list = [None for _ in range(1, 2*(internal_tree.size+1))]
+        ABNegamax(displayed_tree, internal_tree, parent_node=1, current_node=1, side_to_move=1)
 
 
 

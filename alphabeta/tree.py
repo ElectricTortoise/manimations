@@ -64,8 +64,8 @@ def GenerateTree(avgBranchingFactor, max_depth, fixed_depth: bool):
 class Tree:
     edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 8), (4, 9), (6, 10), (6, 11), (6, 12), (8, 13), (8, 14), (8, 15), (9, 16), (9, 17), (9, 18)] 
     edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 8, 9), 6: (10, 11, 12), 8: (13, 14, 15), 9: (16, 17, 18)}
-    labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('7').flip(axis=UP),14:MathTex('-2').flip(axis=UP),15:MathTex('-8').flip(axis=UP),16:MathTex('8').flip(axis=UP),17:MathTex('7').flip(axis=UP),18:MathTex('-4').flip(axis=UP),}
-    scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: 7, 14: -2, 15: -8, 16: 8, 17: 7, 18: -4}
+    labels = {1:MathTex('').flip(axis=UP),2:MathTex('-6').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('').flip(axis=UP),5:MathTex('3').flip(axis=UP),6:MathTex('').flip(axis=UP),8:MathTex('').flip(axis=UP),9:MathTex('').flip(axis=UP),10:MathTex('-8').flip(axis=UP),11:MathTex('1').flip(axis=UP),12:MathTex('-5').flip(axis=UP),13:MathTex('7').flip(axis=UP),14:MathTex('-2').flip(axis=UP),15:MathTex('-8').flip(axis=UP),16:MathTex('9').flip(axis=UP),17:MathTex('7').flip(axis=UP),18:MathTex('-4').flip(axis=UP),}
+    scores = {1: None, 2: -6, 3: None, 4: None, 5: 3, 6: None, 8: None, 9: None, 10: -8, 11: 1, 12: -5, 13: 7, 14: -2, 15: -8, 16: 9, 17: 7, 18: -4}
     size = 19
 
     def __init__(self, avg_branching_factor=0, max_depth=0, fixed_depth=True):
