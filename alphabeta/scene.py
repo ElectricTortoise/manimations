@@ -1,10 +1,12 @@
 from manim import *
-from manim_voiceover import VoiceoverScene
-from manim_voiceover.services.gtts import GTTSService
 from tree import *
 import numpy as np
 import random as Rand
 from collections import deque
+
+RADIUS = 0.35
+VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
+LAYOUT_SCALE = (6, 3)
 
 def NumToStr(num):
     if num == 10:
@@ -412,52 +414,450 @@ class AdditionalNegamaxScene(Scene):
         self.play(Indicate(rendered_minimax_code_ab.code_lines[9:11]), Indicate(rendered_minimax_code_ab.code_lines[16:18]))
         self.wait()
     
-class AnimateABNegamax(Scene):
+
+class Minimax(Scene):
+    def construct(self):
+        self.next_section("section_1", skip_animations=True)
+        tex = Tex("Minimax and alpha-beta pruning")
+        tex[0][10:15].set_color(RED)
+        tex[0][16:20].set_color(BLUE)
+        self.play(Write(tex), run_time=3.4)
+        self.wait(0.5)
+        self.play(tex.animate.shift(UP*3), run_time=1.5)
+        self.wait(0.5)
+        cue_template = Text("#")
+        cue = cue_template.copy()
+        self.play(Write(cue))
+        self.wait(2)
+        self.wait(7.5)
+        self.play(Indicate(tex[0][10:20]), run_time=2)
+        self.wait(0.4)
+        self.wait(7.8)
+
+
+        self.next_section("section_2", skip_animations=True)
+
+        minimax_tex = tex[0][0:7]
+        remaining_tex = tex[0][7:]
+
+        player_template = VGroup(Circle(radius=0.25, fill_opacity=0.5, stroke_width=0).shift(UP*0.75), Sector(radius=0.5, angle=180*DEGREES, fill_opacity=0.5)).center()
+        player1 = player_template.copy().set_color(RED).shift(LEFT*2.5)
+        player2 = player_template.copy().set_color(BLUE).shift(RIGHT*2.5)
+
+        turn_arrows = VGroup(
+            CurvedArrow(start_point=[-1.5,-0.5,0], end_point=[1.5,-0.5,0], color=RED), 
+            CurvedArrow(start_point=[1.5,0.5,0], end_point=[-1.5,0.5,0], color=BLUE)
+        )
+
+        info = Text("i", color=BLUE_A, font_size=80, weight=ULTRAHEAVY)
+        circle_surround = Circle(color=BLUE_D, fill_opacity=0.5).surround(info)
+        perfect_information = VGroup(info, circle_surround).shift(LEFT*0.75)
+
+        base = Rectangle(width=2, height=0.3, color=YELLOW, fill_opacity=1).shift(DOWN*2.5)
+        post = Rectangle(width=0.3, height=3, color=YELLOW, fill_opacity=1).next_to(base, UP)
+        beam = Rectangle(width=6, height=0.3, color=YELLOW, fill_opacity=1).next_to(post, UP)
+        cap = Circle(radius=0.3, color=YELLOW, fill_opacity=1).next_to(post, UP, buff=-0.15)
+        left_hook = Line(beam.get_left() + RIGHT*0.3, beam.get_left() + DOWN*1.5 + RIGHT*0.3, color=WHITE).set_z_index(-1)
+        right_hook = Line(beam.get_right() + LEFT*0.3, beam.get_right() + DOWN*1.5 + LEFT*0.3, color=WHITE).set_z_index(-1)
+        left_bowl = Arc(radius=1, angle=PI, color=YELLOW, fill_opacity=1).shift(left_hook.get_end() + DOWN*0.2).rotate(PI)
+        right_bowl = Arc(radius=1, angle=PI, color=YELLOW, fill_opacity=1).shift(right_hook.get_end() + DOWN*0.2).rotate(PI)
+        scales = VGroup(base, post, beam, cap, left_hook, right_hook, left_bowl, right_bowl).move_to([0, -1.5, 0])
+        scales_icon = scales.copy().set(height=0.8).center().shift(RIGHT*0.75)
+
+        score = ValueTracker(0.5)
+        red_circle = always_redraw(lambda: Circle(radius=score.get_value(), color=RED, fill_opacity=1).next_to(left_bowl, UP, buff=0))
+        blue_circle = always_redraw(lambda: Circle(radius=1-score.get_value(), color=BLUE, fill_opacity=1).next_to(right_bowl, UP, buff=0))
+
+        self.play(LaggedStart(AnimationGroup(FadeOut(remaining_tex), FadeOut(cue)), minimax_tex.animate.move_to(tex.get_center()), lag_ratio=0.5), run_time=3)
+        self.wait(3.8)
+        self.play(DrawBorderThenFill(player1), DrawBorderThenFill(player2), run_time=0.8)
+        self.play(Create(turn_arrows))
+        self.play(Write(perfect_information[0]), DrawBorderThenFill(perfect_information[1]), run_time=1.3)
+        self.play(FadeIn(scales_icon), run_time=1.5)
+        self.wait()
+        self.play(
+            LaggedStart(
+                AnimationGroup(
+                    player1.animate.move_to([-2.7, -2.8, 0]),
+                    player2.animate.move_to([2.7, -2.8, 0]), 
+                    FadeOut(turn_arrows, perfect_information),
+                    ReplacementTransform(scales_icon, scales),
+                ),
+                AnimationGroup(
+                    Create(red_circle),
+                    Create(blue_circle)
+                ),
+                lag_ratio=0.5
+            ),
+            run_time=2
+        )
+        self.wait(1.4)
+        #(player, score, angle, hook_shift, run_time, wait)
+        animation_sets = [(0, 0.75, 0.2, 0.5, 2, 0.1), (0, 0.25, -0.4, -1, 2, 10), (0, 0.1, -0.1, -0.25, 3, 0.1), 
+                          (1, 0.15, 0.05, 0.15, 1, 0.2), (2, 0.1, -0.05, -0.15, 1, 0.2), (1, 0.25, 0.1, 0.25, 1, 0.2), (2, 0.15, -0.05, -0.1, 1, 0.2), 
+                          (1, 0.35, 0.15, 0.25, 1, 0.2), (2, 0.15, -0.15, -0.25, 1, 0.2),] 
+        for animation_set in animation_sets:
+            match animation_set[0]:
+                case 0: player = Dot(radius=0)
+                case 1: player = player1
+                case 2: player = player2
+            self.play(
+                player.animate.scale(6/5),
+                score.animate.set_value(animation_set[1]),
+                Rotate(beam, angle=animation_set[2], about_point=post.get_top()),
+                left_hook.animate.shift(DOWN*animation_set[3]),
+                right_hook.animate.shift(UP*animation_set[3]),
+                left_bowl.animate.shift(DOWN*animation_set[3]),
+                right_bowl.animate.shift(UP*animation_set[3]),
+                run_time=animation_set[4]
+            )
+            self.play(player.animate.scale(5/6), run_time=animation_set[5])
+        self.wait(0.5)
+
+
+        self.next_section("section_3", skip_animations=True)
+
+        minimax_code = '''def Minimax(depth, current_position, is_maximiser):
+    if depth == 0:
+        return Evaluate(current_position)
+
+    MakeMove(current_position) #generates children_position
+    if is_maximiser:
+        best_so_far = -math.inf
+        for children_position in current_position:
+            best_so_far = max(best_so_far, Minimax(depth - 1, children_position, False))
+    else:
+        best_so_far = math.inf
+        for children_position in current_position:
+            best_so_far = min(best_so_far, Minimax(depth - 1, children_position, True))
+
+    return best_so_far'''
+        base_minimax_code = Code(
+            code_string=minimax_code,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width":10, "height":6}
+        )
+        rendered_minimax_code = base_minimax_code.copy()
+        
+        self.play(*[FadeOut(submobject) for submobject in self.mobjects])
+        self.play(
+            Succession(
+                Create(rendered_minimax_code.background), 
+                Write(VGroup(rendered_minimax_code.code_lines[0][i] for i in [0,1,2,3,4,5,6,7,8,9,10,11,49,50]))
+            ),
+            run_time=2.4
+        )
+        self.wait(0.35)
+        self.play(Write(VGroup(rendered_minimax_code.code_lines[0][i] for i in [12,13,14,15,16,17])), run_time=1.4)
+        self.play(Write(VGroup(rendered_minimax_code.code_lines[0][i] for i in range(19,36))), run_time=1.4)
+        self.wait(0.5)
+        self.play(Write(VGroup(rendered_minimax_code.code_lines[0][i] for i in range(37,49))), run_time=1.3)
+
+        self.wait(3)
+        self.play(FadeIn(rendered_minimax_code.code_lines[4]), run_time=3)
+        self.wait(3.3)
+        self.wait(1.1)
+        self.play(Write(rendered_minimax_code.code_lines[2]), run_time=2.9)
+        self.play(Write(rendered_minimax_code.code_lines[1]), run_time=2.1)
+        self.wait(7.6)
+
+        self.play(FadeIn(rendered_minimax_code.code_lines[5:15]), run_time=2.7)
+        self.wait()
+        self.play(Indicate(VGroup(rendered_minimax_code.code_lines[8][43:88])), Indicate(VGroup(rendered_minimax_code.code_lines[12][43:87])))
+        scale = 1.1
+        self.play(rendered_minimax_code.code_lines[5:9].animate.scale(scale))
+        for i in range(4):
+            if i % 2 == 0:
+                self.play(rendered_minimax_code.code_lines[9:13].animate.scale(scale), rendered_minimax_code.code_lines[5:9].animate.scale(1/scale))
+            else:
+                self.play(rendered_minimax_code.code_lines[9:13].animate.scale(1/scale), rendered_minimax_code.code_lines[5:9].animate.scale(scale))
+        self.play(rendered_minimax_code.code_lines[5:9].animate.scale(1/scale))
+
+
+        self.next_section("section_4", skip_animations=True)
+
+        def Minimax(displayed_tree: Graph, internal_tree: Tree, current_node: int, is_maximiser: bool):
+            displayed_node = displayed_tree[current_node]
+
+            if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+                return internal_tree.scores[current_node]
+            
+            if is_maximiser:
+                best_so_far = -10
+                for children_node in internal_tree.edges_dict[current_node]:
+                    self.play(ShowPassingFlash(displayed_tree.edges[(current_node, children_node)].copy().set_stroke(width=5,color=YELLOW)))
+                    child_score = Minimax(displayed_tree, internal_tree, children_node, False)
+                    best_so_far = max(best_so_far, child_score)
+            else:
+                best_so_far = 10
+                for children_node in internal_tree.edges_dict[current_node]:
+                    self.play(ShowPassingFlash(displayed_tree.edges[(current_node, children_node)].copy().set_stroke(width=5,color=YELLOW)))
+                    child_score = Minimax(displayed_tree, internal_tree, children_node, True)
+                    best_so_far = min(best_so_far, child_score)
+            self.play(Write(MathTex(NumToStr(best_so_far)).move_to(displayed_node), scale=1.5))
+            return best_so_far
+        
+        internal_tree = Tree("minimax")
+        displayed_tree_base = Graph(
+            vertices=[i for i in range(1,internal_tree.size)],
+            edges=internal_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=(3, 3),
+            vertex_config=VERTEX_CONFIG,
+            labels=internal_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*3.5)
+        displayed_tree = displayed_tree_base.copy()
+        for vertex in displayed_tree.vertices.values():
+            vertex[1].set_opacity(0)
+        max_text = Tex("Max", color=RED).move_to([0.6,0,0]).align_to(displayed_tree[1], UP)
+        min_text = Tex("Min", color=BLUE).move_to([0.6,0,0]).align_to(displayed_tree[2], UP)
+        line = Line(start=[0,5,0], end=[0,-5,0])
+
+        self.play(rendered_minimax_code.animate.scale(0.5).shift(LEFT*3.5), Create(line), run_time=2)
+        self.play(Create(displayed_tree), Write(max_text), Write(min_text), run_time=1.5)
+        self.wait(1.5)
+        self.play(*[Indicate(edge) for edge in displayed_tree.edges.values()], run_time=0.9)
+        self.play(*[Indicate(vertex) for vertex in list(displayed_tree.vertices.values())[1:]], run_time=1.1)
+        self.wait(1.4)
+        self.play(Indicate(displayed_tree.vertices[1]), run_time=1.2)
+        self.wait(2.6)
+        self.play(LaggedStart(Indicate(displayed_tree[i]) for i in range(4,8)), lag_ratio=0.35, run_time=2.2)
+        self.wait(1.8)
+        self.play(*[vertex[1].animate.set_opacity(1) for vertex in displayed_tree.vertices.values()], run_time=2.2)
+        self.wait()
+        Minimax(displayed_tree, internal_tree, 1, True)
+        self.wait(4.2)
+        self.play(displayed_tree[4][1].animate.set_color(RED))
+        self.wait(2.3)
+        self.play(displayed_tree.edges[(1,3)].animate.set_color(YELLOW), displayed_tree.edges[(3,7)].animate.set_color(YELLOW))
+        self.wait(1.2)
+        self.play(displayed_tree.edges[(2,4)].animate.set_color(RED))
+        self.wait(2.5)
+        self.wait(3.6)
+        minimax_tree = VGroup(displayed_tree, *[mobject for mobject in self.mobjects[27:30]], max_text, min_text)
+        self.play(
+            LaggedStart(
+                AnimationGroup(
+                    minimax_tree.animate.set_opacity(0), 
+                    FadeOut(line)
+                ),
+                rendered_minimax_code.animate.scale(2).shift(RIGHT*3.5), 
+                lag_ratio=0.25
+            ),
+            run_time=1.8
+        )
+        minimax_tree[0] = displayed_tree_base.copy().set_opacity(0)
+        self.wait(1.3)
+
+
+        self.next_section("section_5", skip_animations=True)
+
+        redundant_code = VGroup(*rendered_minimax_code.code_lines[5:13].copy()).scale(1.1).center()
+        feature = VGroup(Dot(color=RED).shift(LEFT*0.75), Tex("Feature", font_size=24, color=RED))
+        feature_1 = feature.copy().next_to(redundant_code[0][19])
+        feature_2 = feature.copy().next_to(redundant_code[4][8])
+        self.play(
+            VGroup(*rendered_minimax_code.code_lines[0:5]).animate.set_opacity(0),
+            VGroup(*rendered_minimax_code.code_lines[13:15]).animate.set_opacity(0), 
+            VGroup(*rendered_minimax_code.code_lines[5:13]).animate.scale(1.1).center(), 
+            Transform(rendered_minimax_code.background, SurroundingRectangle(redundant_code, **Code.default_background_config)),
+            run_time=1.5
+        )
+        self.wait(4)
+        self.play(FadeIn(feature_1), FadeIn(feature_2), run_time=1.6)
+        self.wait(1.5)
+        self.play(
+            feature_1.animate.align_to(rendered_minimax_code.code_lines[6], UL).shift(DOWN*0.25), 
+            FadeOut(feature_2),
+            rendered_minimax_code.code_lines[5].animate.set_opacity(0),
+            rendered_minimax_code.code_lines[9].animate.set_opacity(0),
+            VGroup(*rendered_minimax_code.code_lines[6:9]).animate.shift(DOWN*0.5), 
+            VGroup(*rendered_minimax_code.code_lines[10:13]).animate.shift(UP*0.5),
+            run_time=2
+        )
+        self.wait()
+
+        rendered_minimax_code_2 = base_minimax_code.copy()
+        absolute_score_arrow = Arrow(
+            start=rendered_minimax_code_2.code_lines[2][-1].get_right(), 
+            end=rendered_minimax_code_2.code_lines[2][-1].get_right()+RIGHT*2,
+            max_tip_length_to_length_ratio=0.15
+        )
+        absolute_score_text = Tex("Absolute score", font_size=24).next_to(absolute_score_arrow)
+        absolute_score = VGroup(absolute_score_arrow, absolute_score_text)
+        score_equation = Tex("My score = -Opponent score").shift(UP*2.5)
+        negamax_code = '''def Negamax(depth, current_position):
+    if depth == 0:
+        return RelativeEvaluate(current_position)
+
+    MakeMove(current_position) #generates children_position
+        best_so_far = -math.inf
+        for children_position in current_position:
+            best_so_far = max(best_so_far, -Negamax(depth - 1, children_position))
+
+    return best_so_far'''
+        base_negamax_code = Code(
+            code_string=negamax_code,
+            language="python",
+            add_line_numbers=False,
+            background="rectangle",
+            paragraph_config={"width":10, "height":6}
+        )
+        rendered_negamax_code = base_negamax_code.copy()
+        self.play(ReplacementTransform(rendered_minimax_code, rendered_minimax_code_2), FadeOut(feature_1))
+        self.wait(1.2)
+        self.play(Succession(Create(absolute_score_arrow), Write(absolute_score_text)), run_time=2)
+        self.wait(3.4)
+        self.play(Transform(absolute_score_text, Tex("Relative score", font_size=24).next_to(absolute_score_arrow)), run_time=1.6)
+        self.wait(9.5)
+        self.play(Write(score_equation), run_time=3)
+        self.wait(2.2)
+        self.play(
+            FadeOut(score_equation), 
+            FadeOut(absolute_score, target_position=rendered_minimax_code.code_lines[2][23], scale=0.5),
+            run_time=1.4
+        )
+        self.play(ReplacementTransform(rendered_minimax_code_2, rendered_negamax_code), run_time=2.2)
+        self.wait(4)
+
+        self.next_section("section_6", skip_animations=False)
+        line = Line(start=[0,5,0], end=[0,-5,0])
+        negamax_tree = minimax_tree.copy().set_opacity(1)
+        negamax_tree[1] = MathTex("4").move_to(minimax_tree[1])
+        negamax_tree[2] = MathTex("-2").move_to(minimax_tree[2])
+        negamax_tex = Tex("Negamax").to_corner(UR)
+        self.play(rendered_negamax_code.animate.scale(0.5).shift(LEFT*3.5), Create(line), run_time=2.5)
+        self.play(Create(negamax_tree[0:-2]), Write(negamax_tree[-2]), Write(negamax_tree[-1]), Write(negamax_tex), run_time=2.1)
+        self.wait(1.4)
+        self.play(
+            Transform(negamax_tree[1], MathTex("-4").move_to(minimax_tree[1])), 
+            Transform(negamax_tree[2], MathTex("2").move_to(minimax_tree[2])), 
+            Transform(negamax_tex, Tex("Minimax").to_corner(UR)),
+            run_time=2
+        )
+        self.wait(0.3)
+        self.play(
+            Transform(negamax_tree[1], MathTex("4").move_to(minimax_tree[1])), 
+            Transform(negamax_tree[2], MathTex("-2").move_to(minimax_tree[2])), 
+            Transform(negamax_tex, Tex("Negamax").to_corner(UR)),
+            run_time=2
+        )
+
+        self.wait(1.7)
+        negamax_tree[0].set_z_index(-1)
+        self.play(LaggedStart(*[Indicate(negamax_tree[0][node]) for node in negamax_tree[0].vertices], lag_ratio=0.25), run_time=1.7)
+        self.wait(5.2)
+        self.play(FadeOut(*self.mobjects))
+        cue = cue_template.copy()
+        self.play(Write(cue))
+        self.wait(4.6)
+        self.play(Unwrite(cue))
+        self.wait(6.5)
+
+        self.next_section("section_7", skip_animations=False)
+        
+
+class AB(Scene):
     def construct(self):
         self.next_section("Intro", skip_animations=False)
 
-        chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
-        ab_chapter_text = Tex(r"Alpha-Beta Pruning", substrings_to_isolate=("Alpha","Beta")).next_to(chapter_3, DOWN)
-        self.play(FadeIn(chapter_3, scale=3), FadeIn(ab_chapter_text, shift=UP*2, scale=3), run_time=3)
-        self.wait(0.5)
-        self.play(FadeOut(chapter_3), ab_chapter_text.animate.set_color_by_tex(r"Alpha", RED).set_color_by_tex(r"Beta", BLUE).move_to((0,0,0)), run_time=2)
-        self.wait(5)
+        # chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
+        # ab_chapter_text = Tex(r"Alpha-Beta Pruning", substrings_to_isolate=("Alpha","Beta")).next_to(chapter_3, DOWN)
+        # self.play(FadeIn(chapter_3, scale=3), FadeIn(ab_chapter_text, shift=UP*2, scale=3), run_time=3)
+        # self.wait(0.5)
+        # self.play(FadeOut(chapter_3), ab_chapter_text.animate.set_color_by_tex(r"Alpha", RED).set_color_by_tex(r"Beta", BLUE).move_to((0,0,0)), run_time=2)
+        # self.wait(5)
 
-        self.next_section("explain_ab", skip_animations=False)
+        # self.next_section("explain_ab", skip_animations=False)
 
-        alpha_text_1 = Tex("Alpha: Best score maximiser has guaranteed", substrings_to_isolate=("Alpha", "maximiser")).shift(UP).scale(1.2)
-        alpha_text_1.set_color_by_tex(r"Alpha", RED)
-        alpha_text_1.set_color_by_tex(r"maximiser", RED)
-        beta_text_1 = Tex("Beta: Best score minimiser has guaranteed", substrings_to_isolate=("Beta", "minimiser")).shift(DOWN).scale(1.2)
-        beta_text_1.set_color_by_tex(r"Beta", BLUE)
-        beta_text_1.set_color_by_tex(r"minimiser", BLUE)
-        ab_group_1 = VGroup(alpha_text_1, beta_text_1)
+        # alpha_text_1 = Tex("Alpha: Best score maximiser has guaranteed", substrings_to_isolate=("Alpha", "maximiser")).shift(UP).scale(1.2)
+        # alpha_text_1.set_color_by_tex(r"Alpha", RED)
+        # alpha_text_1.set_color_by_tex(r"maximiser", RED)
+        # beta_text_1 = Tex("Beta: Best score minimiser has guaranteed", substrings_to_isolate=("Beta", "minimiser")).shift(DOWN).scale(1.2)
+        # beta_text_1.set_color_by_tex(r"Beta", BLUE)
+        # beta_text_1.set_color_by_tex(r"minimiser", BLUE)
+        # ab_group_1 = VGroup(alpha_text_1, beta_text_1)
 
-        alpha_text_2 = Tex("Alpha: Best score side-to-move has guaranteed", substrings_to_isolate=("Alpha", "side-to-move")).shift(UP).scale(1.2)
-        alpha_text_2.set_color_by_tex(r"Alpha", RED)
-        beta_text_2 = Tex("Beta: Best score opponent has guaranteed", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
-        beta_text_2.set_color_by_tex(r"Beta", BLUE)
-        ab_group_2 = VGroup(alpha_text_2, beta_text_2)
+        # alpha_text_2 = Tex("Alpha: Best score side-to-move has guaranteed", substrings_to_isolate=("Alpha", "side-to-move")).shift(UP).scale(1.2)
+        # alpha_text_2.set_color_by_tex(r"Alpha", RED)
+        # beta_text_2 = Tex("Beta: Best score opponent has guaranteed", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
+        # beta_text_2.set_color_by_tex(r"Beta", BLUE)
+        # ab_group_2 = VGroup(alpha_text_2, beta_text_2)
 
-        beta_text_3 = Tex("Beta: Maximum score opponent will allow us to have", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
-        beta_text_3.set_color_by_tex(r"Beta", BLUE)
+        # beta_text_3 = Tex("Beta: Maximum score opponent will allow us to have", substrings_to_isolate=("Beta", "opponent")).shift(DOWN).scale(1.2)
+        # beta_text_3.set_color_by_tex(r"Beta", BLUE)
 
-        minimax_text = Tex("Minimax", font_size=96).to_edge(UP)
-        negamax_text = Tex("Negamax", font_size=96).to_edge(UP)
+        # minimax_text = Tex("Minimax", font_size=96).to_edge(UP)
+        # negamax_text = Tex("Negamax", font_size=96).to_edge(UP)
 
-        self.play(Write(minimax_text), TransformMatchingTex(ab_chapter_text, ab_group_1), run_time=4)
-        self.wait(5.5)
-        self.wait(2)
-        self.play(ReplacementTransform(minimax_text, negamax_text))
-        self.wait(5.2)
-        self.play(ReplacementTransform(ab_group_1, ab_group_2), run_time=4)
-        self.wait(3.8)
-        self.play(ReplacementTransform(ab_group_2[1], beta_text_3), run_time=3)
-        self.wait(5)
+        # self.play(Write(minimax_text), TransformMatchingTex(ab_chapter_text, ab_group_1), run_time=4)
+        # self.wait(5.5)
+        # self.wait(2)
+        # self.play(ReplacementTransform(minimax_text, negamax_text))
+        # self.wait(5.2)
+        # self.play(ReplacementTransform(ab_group_1, ab_group_2), run_time=4)
+        # self.wait(3.8)
+        # self.play(ReplacementTransform(ab_group_2[1], beta_text_3), run_time=3)
+        # self.wait(5)      
+
+        alpha_beta_tex = Tex("Alpha-beta pruning").shift(UP*3)
+        alpha_beta_tex[0][0:5].set_color(RED)
+        internal_tree = Tree()
+        internal_tree.edges_list, internal_tree.edges_dict, internal_tree.labels, internal_tree.scores = GenerateTree(3,4,True)
+        internal_tree.size = len(internal_tree.edges_list)+2
+
+        crosses = VGroup()
+        def Negamax(internal_tree: Tree, displayed_tree: Graph, current_node: int, side_to_move: int, alpha:int, beta:int):
+            best_so_far = -10
+            beta_cutoff = False
+
+            if current_node not in internal_tree.edges_dict: #checks if current_node is a leaf
+                best_so_far = max(best_so_far, internal_tree.scores[current_node])
+                return best_so_far
+
+            best_so_far = -10
+            for children_node in internal_tree.edges_dict[current_node]:
+                best_so_far = max(best_so_far, -Negamax(internal_tree, displayed_tree, children_node, -side_to_move, -beta, -alpha))
+                alpha = max(best_so_far, alpha)
+                internal_tree.scores[current_node] = best_so_far
+                internal_tree.labels[current_node] = MathTex(f"{best_so_far}").flip(axis=UP)
+                if best_so_far > beta:
+                    beta_cutoff = True
+                    break
+            
+            self.add(Tex(f"{best_so_far}").move_to(displayed_tree[current_node]))
+
+            if beta_cutoff == True:
+                children_node += 1
+                while(children_node in internal_tree.edges_dict[current_node]):
+                    crosses.add((Cross(scale_factor=RADIUS-0.1).move_to(displayed_tree.edges[(current_node, children_node)])))
+                    children_node += 1
+                return best_so_far
+
+            return best_so_far
+
+        displayed_tree = Graph([i for i in range(1, internal_tree.size)],
+            internal_tree.edges_list,
+            layout="tree",
+            layout_config={"root_vertex":1},
+            layout_scale=LAYOUT_SCALE,
+            vertex_config=VERTEX_CONFIG,
+            labels=internal_tree.labels
+        ).flip(axis=UP).move_to(RIGHT*0.5)
+
+        self.add(displayed_tree)
+        Negamax(internal_tree, displayed_tree, 1, 1, -10, 10)
+        print(internal_tree)
+        alpha_beta_tex[0][6:10].set_color(BLUE)
+
+        self.play(Write(alpha_beta_tex), run_time=3)
+
+
 
         self.next_section("window_ab", skip_animations=False)
-
-
 
         arrow_tip_length = 0.25
         rect = Rectangle(height=4, width=3, stroke_width=1).set_color(GREEN)
@@ -531,7 +931,7 @@ class AnimateABNegamax(Scene):
         score_dot = Dot().add_updater(lambda m: m.move_to((0, dot_tracker.get_value(), 0)))
 
         #Animations
-        self.play(*[FadeOut(mobject) for mobject in self.mobjects], Transform(alpha_text_2[0], alpha_tex), Transform(beta_text_3[0], beta_tex), run_time=2)
+        self.play(FadeIn(alpha_tex), FadeIn(beta_tex), run_time=2)
         self.add(alpha_tex, beta_tex)
         self.play(GrowFromCenter(rect))
         self.play(FadeTransform(rect, exact_window))
@@ -812,10 +1212,6 @@ class AnimateABNegamax(Scene):
 
         self.next_section("ab_tree", skip_animations=False)
 
-        RADIUS = 0.35
-        VERTEX_CONFIG = {"stroke_width": 2, "stroke_color": WHITE, "radius": RADIUS, "color":BLACK, "fill_opacity": 1}
-        LAYOUT_SCALE = (6, 3)
-
         RECT=0
         ALPHA_TEX=1
         BETA_TEX=2
@@ -1085,7 +1481,7 @@ class AnimateABNegamax(Scene):
         beta_tex = always_redraw(lambda: MathTex(r"\beta", color=BLUE).next_to(exact_window,LEFT).shift(UP*window_tracker.get_value()))
         dot = Dot()
         def dot_updater(mobj):
-            if -window_tracker.get_value() < mobj.get_center()[1] < window_tracker.get_value():
+            if -window_tracker.get_value() <= mobj.get_center()[1] < window_tracker.get_value():
                 mobj.set_color(GREEN)
             else:
                 mobj.set_color(RED)
@@ -1137,31 +1533,8 @@ class AnimateABNegamax(Scene):
         )
         self.play(window_tracker.animate.set_value(1), run_time=2.5)
         self.wait(3.25)
-
-        window_tracker = ValueTracker(2)
-
-        exact_window = always_redraw(lambda: Rectangle(height=window_tracker.get_value()*2, width=3, stroke_width=1, color=GREEN_E, fill_opacity=0.3))
-        non_exact_windows = always_redraw(
-            lambda: VGroup(
-                Rectangle(height=4-window_tracker.get_value(), width=3, stroke_width=1, color=RED, fill_opacity=0.2).shift(UP*(2+(window_tracker.get_value())/2)),
-                Rectangle(height=4-window_tracker.get_value(), width=3, stroke_width=1, color=RED, fill_opacity=0.2).shift(DOWN*(2+(window_tracker.get_value())/2))
-                )
-            ),
-        alpha_tex = always_redraw(lambda: MathTex(r"\alpha", color=RED).next_to(exact_window,LEFT).shift(DOWN*window_tracker.get_value()))
-        beta_tex = always_redraw(lambda: MathTex(r"\beta", color=BLUE).next_to(exact_window,LEFT).shift(UP*window_tracker.get_value()))  
-        dot = Dot()
-        def dot_updater(mobj):
-            if -window_tracker.get_value() <= mobj.get_center()[1] < window_tracker.get_value():
-                mobj.set_color(GREEN)
-            else:
-                mobj.set_color(RED)
-        dot.add_updater(dot_updater)      
-        score_dots = VGroup(
-            dot.copy().move_to((0, dot_y, 0)).set_color(GREEN if -2 < dot_y < 2 else RED) 
-            for dot_y in [0, -1, -0.5, -1.2, 3, 3.8, 1.5, -2.5, -1.8, 2.1, -1.9, 1.2, 0.5, 0.8, -2.8, -3.8, -3, 1]
-        )
         
-        true_score = VGroup(Dot(color=YELLOW), Tex("True score", color=YELLOW, font_size=24).next_to(Dot(), UP*0.25))
+        true_score = VGroup(Dot(color=YELLOW).move_to([0, 0.8, 0]), Tex("True score", color=YELLOW, font_size=24).next_to(Dot(), UP*0.25))
         ab_displayed_tree = FillTree(Tree(type="asp"), is_minimax=False, alphabeta=True)
         exact_asp_ab_displayed_tree = FillTree(Tree(type="asp"), is_minimax=False, alphabeta=True, alpha=-2, beta=3)
         non_exact_asp_ab_displayed_tree = FillTree(Tree(type="asp"), is_minimax=False, alphabeta=True, alpha=-8, beta=-7)
@@ -1180,6 +1553,11 @@ class AnimateABNegamax(Scene):
         self.wait(8.4)
         self.clear()
         window_tracker.set_value(2)
+        exact_window.update(1/self.camera.frame_rate)
+        non_exact_windows[0].update(1/self.camera.frame_rate)
+        alpha_tex.update(1/self.camera.frame_rate)
+        beta_tex.update(1/self.camera.frame_rate)
+        score_dots.update(1/self.camera.frame_rate)
         self.play(
             DrawBorderThenFill(exact_window), 
             DrawBorderThenFill(non_exact_windows[0]), 
@@ -1194,7 +1572,7 @@ class AnimateABNegamax(Scene):
 
 class PVS(Scene):
     def construct(self):
-        self.next_section("section_1", skip_animations=True)
+        self.next_section("section_1", skip_animations=False)
         alpha_value = ValueTracker(-1)
         beta_value = ValueTracker(1)
         right_shift = ValueTracker(0)
@@ -1236,66 +1614,79 @@ class PVS(Scene):
                 mobj.set_color(RED)
         dot.add_updater(dot_updater)      
         score_dots = VGroup(
-            dot.copy().move_to((0, dot_y, 0)).set_color(GREEN if -0.999 < dot_y < 0.999 else RED) 
-            for dot_y in [0, -1, -0.5, -1.2, 3, 3.8, 1.5, -2.5, -1.8, 2.1, -1.9, 1.2, 0.5, 0.8, -2.8, -3.8, -3, 1]
+            dot.copy().move_to((0, dot_y, 0))
+            for dot_y in [-3.8, -3, -2.8, -2.5, -1.9, -1.8, -1.2, -1, -0.5, 0, 0.5, 1, 1.2, 1.5, 2.1, 3, 3.8]
         )
         
-        true_score = VGroup(Dot(color=YELLOW), Tex("True score", color=YELLOW, font_size=24).next_to(Dot(), UP*0.25))
+        ab_window = VGroup(exact_window, non_exact_windows[0], alpha_tex, beta_tex)
+
+        score_dots.update(1/self.camera.frame_rate)
+        true_score = VGroup(Dot(color=YELLOW).move_to([0,0.8,0]), Tex("True score", color=YELLOW, font_size=24).next_to(Dot(), UP*0.25))
+        question_mark = Tex("?", color=YELLOW)
+        moving_exact_dot_tracker = ValueTracker(-1)
+        moving_exact_dot = always_redraw(lambda: Dot(color=YELLOW, fill_opacity=0.5).move_to([0,moving_exact_dot_tracker.get_value(),0]))
+        principal_variation_search_text = Tex("Principal Variation Search", substrings_to_isolate=("P","V","S",))
+        pvs_text = Tex("PVS", substrings_to_isolate=("P","V","S",))
 
         self.add(exact_window, non_exact_windows[0], alpha_tex, beta_tex, score_dots, true_score)
-        self.wait(3.3)
+        self.wait(3.2)
         self.play(Wiggle(true_score))
-        self.wait(0.4)
-        self.play(*[Unwrite(submobject) for submobject in self.mobjects[:-2]])
-
-
-
-
-
-        ab_question = Tex(r"What is the highest score in our $\alpha\beta$ window?")
-        ab_question[0][26].set_color(RED)
-        ab_question[0][27].set_color(BLUE)
-        pvs_question = Tex(r"Does the first move I search have\\the highest score in our $\alpha\beta$ window?",)
-        pvs_question[0][46].set_color(RED)
-        pvs_question[0][47].set_color(BLUE)
-
-        self.play(Write(ab_question), run_time=4.9)
+        self.wait(3.9)
+        self.play(LaggedStart(*[Indicate(score_dots[i]) for i in range(7,11)], Indicate(true_score), lag_ratio=0.3, run_time=2))
+        self.wait(1.4)
         self.wait(4.5)
-        self.play(ReplacementTransform(ab_question, pvs_question), run_time=3.5)
-        self.wait(0.6)
-        self.play(pvs_question.animate.shift(UP*2))
+        exact_dots = VGroup(score_dots[7:11], true_score)
 
-
-
-
-
-        yes_answer = Tex("Return as true score").move_to([-3.5,-2,0])
-        yes_arrow = Arrow(start=pvs_question.get_bottom(), end=yes_answer.get_top())
-        yes = Tex("Yes").next_to(yes_arrow, LEFT)
-        no_answer = Tex(r"What is the highest score\\in our $\alpha\beta$ window?").move_to([3.5,-2,0])
-        no_answer[0][26].set_color(RED)
-        no_answer[0][27].set_color(BLUE)
-        no_arrow = Arrow(start=pvs_question.get_bottom(), end=no_answer.get_top())
-        no = Tex("No").next_to(no_arrow, RIGHT)
-
-        self.play(Write(yes), Write(yes_arrow), Write(no_arrow), Write(no))
-        self.wait(0.7)
-        self.play(Write(yes_answer),  Write(no_answer), run_time=3)
-
-
-
-
-
-        principal_variation_search_text = Tex("Principal Variation Search", substrings_to_isolate=("P","V","S",)).to_edge(UP)
-        pvs_text = Tex("PVS", substrings_to_isolate=("P","V","S",)).to_edge(UP)
-
-        self.wait(1.3)
-        self.play(Write(principal_variation_search_text), run_time=1.6)
+        self.play(ReplacementTransform(exact_dots, question_mark), run_time=2)
+        self.wait()
+        self.play(ReplacementTransform(question_mark, moving_exact_dot), run_time=1.8)
+        self.wait(0.8)
+        self.play(moving_exact_dot_tracker.animate.set_value(0.8), run_time=2)
+        self.remove(moving_exact_dot)
+        self.play(ReplacementTransform(Group(*self.mobjects[:-7]), principal_variation_search_text), run_time=1.6)
         self.wait(0.3)
         self.play(ReplacementTransform(principal_variation_search_text, pvs_text), run_time=0.9)
-        self.wait(0.3)
+        self.wait()
+        self.play(Unwrite(pvs_text), run_time=0.5)
 
+        # self.play(*[Unwrite(submobject) for submobject in self.mobjects[:-2]])
+        # ab_question = Tex(r"What is the highest score in our $\alpha\beta$ window?")
+        # ab_question[0][26].set_color(RED)
+        # ab_question[0][27].set_color(BLUE)
+        # pvs_question = Tex(r"Are there any exact scores which beat $\alpha$?")
+        # pvs_question[0][-2].set_color(RED)
+        # self.play(Write(ab_question), run_time=4.9)
+        # self.wait(4.5)
+        # self.play(ReplacementTransform(ab_question, pvs_question), run_time=1.9)
+        # self.wait()
+        # yes_answer = Tex("Return as true score").move_to([-3.5,-2,0])
+        # yes_arrow = Arrow(start=pvs_question.get_bottom()+[0,2,0], end=[-4,-1,0])
+        # yes = Tex("Yes").next_to(yes_arrow, LEFT)
+        # no_answer = Tex(r"What is the highest score\\in our $\alpha\beta$ window?").move_to([3.5,-2,0])
+        # no_answer[0][26].set_color(RED)
+        # no_answer[0][27].set_color(BLUE)
+        # no_arrow = Arrow(start=pvs_question.get_bottom()+[0,2,0], end=[4,-1,0])
+        # no = Tex("No").next_to(no_arrow, RIGHT)
+        # self.play(
+        #     Succession(
+        #         pvs_question.animate.shift(UP*2), 
+        #         AnimationGroup(Write(yes_arrow), Write(no_arrow)), 
+        #         AnimationGroup(Write(yes), Write(no)), 
+        #         lag_ratio=0.75
+        #     ),
+        #     run_time=1.5
+        # )
+        # self.wait(0.3)
+        # self.play(Write(yes_answer),  Write(no_answer), run_time=2.9)
+        # principal_variation_search_text = Tex("Principal Variation Search", substrings_to_isolate=("P","V","S",)).to_edge(UP)
+        # pvs_text = Tex("PVS", substrings_to_isolate=("P","V","S",)).to_edge(UP)
+        # self.wait(1)
+        # self.play(Write(principal_variation_search_text), run_time=1.6)
+        # self.wait(0.3)
+        # self.play(ReplacementTransform(principal_variation_search_text, pvs_text), run_time=0.9)
+        # self.wait(1.5)
 
+        self.next_section("section_2", skip_animations=False)
 
         pvs_code = '''def Negamax(depth, current_node, side_to_move, alpha, beta):
     if depth == 0:
@@ -1307,7 +1698,7 @@ class PVS(Scene):
             score = -Negamax(depth - 1, child_node, -side_to_move, -beta, -alpha)
         else:
             score = -Negamax(depth - 1, child_node, -side_to_move, -alpha-0.01, -alpha)
-            if alpha < score < beta:
+            if alpha < score <= beta:
                 score = -Negamax(depth - 1, child_node, -side_to_move, -beta, -alpha)
         
         best_so_far = max(score, best_so_far)
@@ -1326,52 +1717,153 @@ class PVS(Scene):
             add_line_numbers=False,
             background="window",
             paragraph_config={"width": 10, "height": 6}
-        )
+        ).scale(0.5).shift(LEFT*3.5)
 
-        self.play(Succession(AnimationGroup(*[FadeOut(mobject) for mobject in self.mobjects]), Write(rendered_pvs_code), lag_ratio=0.75), run_time=1.3)
-        self.wait(0.9)
-        self.play(*[Indicate(rendered_pvs_code.code_lines[i]) for i in [6,7]], run_time=2)
-        self.wait(1.5)
-        self.play(Indicate(rendered_pvs_code.code_lines[8]), run_time=1.6)
-        self.play(Indicate(rendered_pvs_code.code_lines[9]), run_time=1.1)
-
-        self.next_section("section_2", skip_animations=False)
-        self.add(NumberPlane())
-        self.wait(4.1)
-        self.play(rendered_pvs_code.animate.scale(0.5), run_time=0.4)
-        full = Tex(r"Full\\Window", substrings_to_isolate=("F",)).move_to([1,3.2,0])
-        full_raise = Tex(r"Full\\Window\\after\\raise").move_to([1,3.2,0])
-        null = Tex(r"Null\\Window", substrings_to_isolate=("N",)).move_to([1,3.2,0])
         right_shift.set_value(3.5)
-        alpha_value.set_value(-2)
-        beta_value.set_value(2)
-        exact_window.update(1/self.camera.frame_rate)
-        non_exact_windows[0].update(1/self.camera.frame_rate)
-        alpha_tex.update(1/self.camera.frame_rate)
-        beta_tex.update(1/self.camera.frame_rate)
+        alpha_value.set_value(-1.5)
+        beta_value.set_value(1.5)
+
+        ab_window.update(1/self.camera.frame_rate)
+
         pvs_dots = VGroup(
-            dot.copy().move_to((3.5, dot_y, 0))
-            for dot_y in [2.5, -1, 3.1, -2.5, -1.8, 0, -3.8, -3, 1]
+            *[dot.copy().move_to((3.5, dot_y, 0))
+            for dot_y in [0, -1.5, -3]],
+            Dot(color=YELLOW).move_to([3.5, 2.5, 0])
         )
         pvs_dots.update(1/self.camera.frame_rate)
+
+        graph = Graph([1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+                {(1,2), (1,3), (1,4), (2,5), (2,6), (2,7), (3,8), (3,9), (3,10), (3,11), (4,12) ,(4,13), (4,14)},
+                layout="tree",
+                layout_config={"root_vertex":1},
+                layout_scale=(3,3),
+                labels=False
+            )
+        labeleddot = LabeledDot(stroke_width=2, stroke_color=WHITE, radius=0.35, color=BLACK, fill_opacity=1, label="")
+        displayed_tree_template = VGroup(
+            graph, 
+            labeleddot.copy().move_to(graph.vertices[1]), 
+            labeleddot.copy().move_to(graph.vertices[2]), 
+            labeleddot.copy().move_to(graph.vertices[3]), 
+            labeleddot.copy().move_to(graph.vertices[4])
+        ).shift(RIGHT*3.5)
+
+        full_window_template = Rectangle(width=0.35, height=0.6, stroke_width=1, fill_opacity=0.5).set_color(GREEN).next_to(graph.vertices[3], LEFT*1.5).shift(UP*0.1)
+        parent_window_template = Rectangle(width=0.35, height=0.25, stroke_width=1, fill_opacity=0.5).set_color(GREEN).next_to(graph.vertices[1], LEFT*1.5).shift(UP*0.25/2)
+        null_window = Rectangle(width=0.35, height=0.01, stroke_width=1, fill_opacity=0.5).set_color(GREEN)
+        null_windows_template = VGroup(null_window.copy().next_to(graph.vertices[4], LEFT*1.5), null_window.copy().next_to(graph.vertices[2], LEFT*1.5)) 
+
+        alpha = Tex(r"$\alpha$?").next_to(graph.vertices[1], UP*1.5)
+        alpha[0][0].set_color(RED)
+
+        displayed_tree = displayed_tree_template.copy()
+        full_window = full_window_template.copy()
+        parent_window = full_window.copy().next_to(graph.vertices[1], LEFT*1.5).shift(DOWN*0.1/2)
+
+
         self.play(
             Succession(
-                rendered_pvs_code.animate.shift(LEFT*3.5), 
-                Create(Line(start=[0,5,0], end=[0,-5,0])),
-                AnimationGroup(DrawBorderThenFill(exact_window), DrawBorderThenFill(non_exact_windows[0]), Write(alpha_tex), Write(beta_tex), Create(pvs_dots)),
+                Create(Line(start=[0,5,0], end=[0,-5,0])), 
+                AnimationGroup(Write(rendered_pvs_code), Write(displayed_tree), DrawBorderThenFill(parent_window)),
                 lag_ratio=0.75
-            ),
-            run_time=1.2
+            )
         )
-        self.play(alpha_value.animate.set_value(-1), beta_value.animate.set_value(1), run_time=1.4)
-        self.wait(1.5)
-        self.play(beta_value.animate.set_value(alpha_value.get_value()+0.01), run_time=1.3)
-        self.wait(2.2)
-        #for this example
-        self.play(Write(full), alpha_value.animate.set_value(-2.8), beta_value.animate.set_value(2.8), Uncreate(pvs_dots))
+        self.wait(0.5)
+        self.play(
+            ShowPassingFlash(graph.edges[(1,3)].copy().set_stroke(width=5, color=YELLOW)), 
+            DrawBorderThenFill(full_window), 
+            *[Indicate(rendered_pvs_code.code_lines[i]) for i in [6,7]], 
+            run_time=2
+        )
+        self.wait(2.5)
+        self.play(Write(alpha), run_time=1.4)
+        self.wait(0.5)
+
+        self.play(FadeOut(displayed_tree), FadeOut(alpha), FadeOut(parent_window), ReplacementTransform(full_window, ab_window), run_time=1.3)
+        self.play(Write(pvs_dots[0]), alpha_value.animate.set_value(0), run_time=1.6)
+        self.play(Succession(*[Write(pvs_dots[i]) for i in range(1,3)]), lag_ratio=0.75)
+        self.wait(0.7)
+        self.play(Write(pvs_dots[3], run_time=0.7))
+        self.wait(1.6)
+        self.play(Unwrite(pvs_dots[3], run_time=0.7))
         self.wait()
-        self.play(Create(pvs_dots[0]), alpha_value.animate.set_value(2.5), TransformMatchingTex(full, full_raise), run_time=1.6)
-        self.wait(2)
+
+        self.remove(*[pvs_dot for pvs_dot in pvs_dots])
+        displayed_tree = displayed_tree_template.copy()
+        full_window = full_window_template.copy()
+        parent_window = parent_window_template.copy()
+        null_windows = null_windows_template.copy()
+        self.play(FadeIn(displayed_tree), FadeIn(full_window), ReplacementTransform(ab_window, parent_window), run_time=1.7)
+        self.wait(0.7)
+        self.play(*[ReplacementTransform(parent_window.copy(), window) for window in null_windows], run_time=1.2)
+        self.wait(0.2)
+        self.play(Indicate(rendered_pvs_code.code_lines[9][67:78]), run_time=1.2)
+        self.wait(1.3)
+        self.play(Indicate(rendered_pvs_code.code_lines[9][80:86]), run_time=1.2)
+        self.wait(7.6)
+
+        self.next_section("section_3", skip_animations=False)
+        null_dots_1 = VGroup(Dot(color=RED, radius=0.04).move_to([null_windows[0].get_center()]).shift([0,dot_y,0]) for dot_y in [-0.1, 0.3])
+        null_dots_2 = VGroup(Dot(color=RED, radius=0.04).move_to([null_windows[1].get_center()]).shift([0,dot_y,0]) for dot_y in [-0.35, -0.3, -0.2])
+        parent_dot_bottom = Dot(color=RED, radius=0.04).move_to(parent_window).shift(DOWN*0.3)
+        parent_dot_top = Dot(color=RED, radius=0.04).move_to(parent_window).shift(UP*0.2)
+        bound_score_bottom = VGroup(parent_dot_bottom, Arrow(start=parent_dot_bottom.get_center(), end=parent_dot_bottom.get_center()+[0,-0.25,0], color=RED))
+        bound_score_top = VGroup(parent_dot_top, Arrow(start=parent_dot_top.get_center(), end=parent_dot_top.get_center()+[0,0.25,0], color=RED))
+        window_bound_score_bottom = VGroup(Dot(color=RED), Arrow(start=[0,0,0], end=[0,-1,0], buff=0, color=RED)).move_to([3.5, -3, 0])
+        window_bound_score_top = VGroup(Dot(color=RED), Arrow(start=[0,0,0], end=[0,1,0], buff=0, color=RED)).move_to([3.5, 2.5, 0])
+
+        self.play(Write(null_dots_1))
+        self.wait()
+        self.play(
+            ShowPassingFlash(graph.edges[(1,4)].copy().reverse_direction().set_stroke(width=5, color=YELLOW)),
+            ReplacementTransform(null_dots_1[-1].copy(), parent_dot_bottom)
+        )
+        self.play(Write(null_dots_2))
+        self.wait()
+        self.play(
+            ShowPassingFlash(graph.edges[(1,2)].copy().reverse_direction().set_stroke(width=5, color=YELLOW)),
+            ReplacementTransform(null_dots_2[-1].copy(), parent_dot_top)
+        )
+        self.wait(1.4)
+        self.wait(0.7)
+        self.play(ReplacementTransform(parent_dot_bottom, bound_score_bottom), ReplacementTransform(parent_dot_top, bound_score_top))
+        self.wait(2.3)
+
+
+        self.play(
+            FadeOut(displayed_tree), 
+            FadeOut(full_window), 
+            FadeOut(null_windows), 
+            FadeOut(null_dots_1), 
+            FadeOut(null_dots_2),
+            ReplacementTransform(parent_window, ab_window),
+            ReplacementTransform(bound_score_bottom, window_bound_score_bottom),
+            ReplacementTransform(bound_score_top, window_bound_score_top),
+            run_time=1.3
+        )
+        self.wait(1.5)
+        self.play(Indicate(window_bound_score_bottom), Indicate(window_bound_score_top), run_time=2.1)
+        self.wait(3.7)
+
+        self.next_section("section_4", skip_animations=False)
+        self.wait(1.8)
+        self.play(window_bound_score_top.animate.shift(DOWN).set_color(GREEN), run_time=1.4)
+        self.wait()
+        self.play(Indicate(rendered_pvs_code.code_lines[10:12]), run_time=1.7)
+        self.play(
+            Circumscribe(rendered_pvs_code.code_lines[11][71:85]), 
+            Unwrite(window_bound_score_bottom), 
+            Unwrite(window_bound_score_top), 
+            alpha_value.animate.set_value(-1.5),
+            beta_value.animate.set_value(1.5),
+            run_time=1.3
+        )
+        dots = [Dot(color=GREEN if -1.5 <= dot_y < 1.5 else RED).move_to([3.5, dot_y, 0]) for dot_y in [-2.5, 1, -0.6, 0.2, -2, -3, -3.4, -2.3, -1.5, 0.8, -1, 0, -0.8]]
+        self.wait()
+        self.play(Succession(*[Write(dot) for dot in dots], run_time=12.5))
+        self.wait(0.5)
+        self.play(Flash(dots[1]))
+        self.wait(0.8)
 
 
 

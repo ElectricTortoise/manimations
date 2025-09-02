@@ -77,6 +77,12 @@ class Tree:
 
     def __init__(self, type="ab"):
         match type:
+            case "minimax":
+                self.edges_list=[(1,2),(1,3),(2,4),(2,5),(3,6),(3,7)]
+                self.edges_dict = {1: (2, 3), 2: (4, 5), 3: (6, 7)}
+                self.labels = {1:MathTex('').flip(axis=UP),2:MathTex('').flip(axis=UP),3:MathTex('').flip(axis=UP),4:MathTex('6').flip(axis=UP),5:MathTex('-4').flip(axis=UP),6:MathTex('7').flip(axis=UP),7:MathTex('2').flip(axis=UP),}
+                self.scores = {1: None, 2: None, 3: None, 4: 6, 5: -4, 6: 7, 7: 2}
+                self.size = 8
             case "ab":
                 self.edges_list = [(1, 2), (1, 3), (3, 4), (3, 5), (4, 6), (4, 7), (4, 8), (6, 9), (6, 10), (6, 11), (7, 12), (7, 13), (7, 14), (8, 15), (8, 16), (8, 17)] 
                 self.edges_dict = {1: (2, 3), 3: (4, 5), 4: (6, 7, 8), 6: (9, 10, 11), 7: (12, 13, 14), 8: (15, 16, 17)}
