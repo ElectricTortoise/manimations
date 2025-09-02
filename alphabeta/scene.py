@@ -762,7 +762,7 @@ class Minimax(Scene):
 
 class AB(Scene):
     def construct(self):
-        self.next_section("Intro", skip_animations=False)
+        self.next_section("Intro_to_ab", skip_animations=False)
 
         # chapter_3 = Tex(r"\textbf{\underline{\Large Chapter 3}}\\")
         # ab_chapter_text = Tex(r"Alpha-Beta Pruning", substrings_to_isolate=("Alpha","Beta")).next_to(chapter_3, DOWN)
@@ -806,8 +806,11 @@ class AB(Scene):
         alpha_beta_tex = Tex("Alpha-beta pruning").shift(UP*3)
         alpha_beta_tex[0][0:5].set_color(RED)
         internal_tree = Tree()
-        internal_tree.edges_list, internal_tree.edges_dict, internal_tree.labels, internal_tree.scores = GenerateTree(3,4,True)
-        internal_tree.size = len(internal_tree.edges_list)+2
+        internal_tree.edges_list = [(1, 2), (1, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (3, 9), (3, 10), (4, 11), (4, 12), (4, 13), (5, 14), (5, 15), (6, 16), (6, 17), (7, 18), (7, 19), (7, 20), (7, 21), (7, 22), (8, 23), (8, 24), (8, 25), (8, 26), (9, 27), (9, 28), (9, 29), (10, 30), (10, 31), (10, 32), (10, 33), (11, 34), (11, 35), (12, 36), (12, 37), (12, 38), (12, 39), (12, 40), (12, 41), (13, 42), (13, 43), (13, 44), (13, 45), (13, 46), (13, 47), (13, 48), (14, 49), (14, 50), (14, 51), (14, 52), (14, 53), (14, 54), (14, 55), (15, 56), (15, 57), (15, 58), (16, 59), (16, 60), (16, 61), (16, 62), (16, 63), (17, 64), (17, 65), (17, 66), (18, 67), (18, 68), (18, 69), (19, 70), (19, 71), (19, 72), (19, 73), (19, 74), (19, 75), (19, 76), (19, 77), (19, 78), (19, 79), (19, 80), (19, 81), (20, 82), (20, 83), (21, 84), (21, 85), (21, 86), (22, 87), (22, 88), (22, 89), (22, 90), (23, 91), (23, 92), (23, 93), (23, 94), (24, 95), (24, 96), (24, 97), (24, 98), (24, 99), (25, 100), (25, 101), (25, 102), (25, 103), (25, 104), (26, 105), (26, 106), (27, 107), (27, 108), (27, 109), (28, 110), (28, 111), (29, 112), (29, 113), (29, 114), (29, 115), (30, 116), (30, 117), (31, 118), (31, 119), (31, 120), (32, 121), (33, 122), (33, 123), (33, 124)]
+        internal_tree.edges_dict = {1: (2, 3), 2: (4, 5, 6, 7, 8), 3: (9, 10), 4: (11, 12, 13), 5: (14, 15), 6: (16, 17), 7: (18, 19, 20, 21, 22), 8: (23, 24, 25, 26), 9: (27, 28, 29), 10: (30, 31, 32, 33), 11: (34, 35), 12: (36, 37, 38, 39, 40, 41), 13: (42, 43, 44, 45, 46, 47, 48), 14: (49, 50, 51, 52, 53, 54, 55), 15: (56, 57, 58), 16: (59, 60, 61, 62, 63), 17: (64, 65, 66), 18: (67, 68, 69), 19: (70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81), 20: (82, 83), 21: (84, 85, 86), 22: (87, 88, 89, 90), 23: (91, 92, 93, 94), 24: (95, 96, 97, 98, 99), 25: (100, 101, 102, 103, 104), 26: (105, 106), 27: (107, 108, 109), 28: (110, 111), 29: (112, 113, 114, 115), 30: (116, 117), 31: (118, 119, 120), 32: (121,), 33: (122, 123, 124)}
+        internal_tree.labels={1:MathTex('-1').flip(axis=UP),2:MathTex('7').flip(axis=UP),3:MathTex('1').flip(axis=UP),4:MathTex('-6').flip(axis=UP),5:MathTex('-6').flip(axis=UP),6:MathTex('-7').flip(axis=UP),7:MathTex('-3').flip(axis=UP),8:MathTex('7').flip(axis=UP),9:MathTex('-1').flip(axis=UP),10:MathTex('8').flip(axis=UP),11:MathTex('6').flip(axis=UP),12:MathTex('9').flip(axis=UP),13:MathTex('8').flip(axis=UP),14:MathTex('6').flip(axis=UP),15:MathTex('8').flip(axis=UP),16:MathTex('7').flip(axis=UP),17:MathTex('7').flip(axis=UP),18:MathTex('8').flip(axis=UP),19:MathTex('9').flip(axis=UP),20:MathTex('3').flip(axis=UP),21:MathTex('').flip(axis=UP),22:MathTex('').flip(axis=UP),23:MathTex('9').flip(axis=UP),24:MathTex('9').flip(axis=UP),25:MathTex('7').flip(axis=UP),26:MathTex('-7').flip(axis=UP),27:MathTex('8').flip(axis=UP),28:MathTex('9').flip(axis=UP),29:MathTex('1').flip(axis=UP),30:MathTex('-8').flip(axis=UP),31:MathTex('').flip(axis=UP),32:MathTex('').flip(axis=UP),33:MathTex('').flip(axis=UP),34:MathTex('-6').flip(axis=UP),35:MathTex('3').flip(axis=UP),36:MathTex('-9').flip(axis=UP),37:MathTex('-3').flip(axis=UP),38:MathTex('6').flip(axis=UP),39:MathTex('-7').flip(axis=UP),40:MathTex('6').flip(axis=UP),41:MathTex('-8').flip(axis=UP),42:MathTex('7').flip(axis=UP),43:MathTex('2').flip(axis=UP),44:MathTex('6').flip(axis=UP),45:MathTex('-1').flip(axis=UP),46:MathTex('8').flip(axis=UP),47:MathTex('2').flip(axis=UP),48:MathTex('-8').flip(axis=UP),49:MathTex('-6').flip(axis=UP),50:MathTex('1').flip(axis=UP),51:MathTex('2').flip(axis=UP),52:MathTex('-3').flip(axis=UP),53:MathTex('9').flip(axis=UP),54:MathTex('3').flip(axis=UP),55:MathTex('6').flip(axis=UP),56:MathTex('-1').flip(axis=UP),57:MathTex('-8').flip(axis=UP),58:MathTex('-6').flip(axis=UP),59:MathTex('3').flip(axis=UP),60:MathTex('-2').flip(axis=UP),61:MathTex('-3').flip(axis=UP),62:MathTex('-7').flip(axis=UP),63:MathTex('4').flip(axis=UP),64:MathTex('-7').flip(axis=UP),65:MathTex('7').flip(axis=UP),66:MathTex('-3').flip(axis=UP),67:MathTex('-8').flip(axis=UP),68:MathTex('-2').flip(axis=UP),69:MathTex('-7').flip(axis=UP),70:MathTex('0').flip(axis=UP),71:MathTex('-5').flip(axis=UP),72:MathTex('-5').flip(axis=UP),73:MathTex('2').flip(axis=UP),74:MathTex('3').flip(axis=UP),75:MathTex('0').flip(axis=UP),76:MathTex('-3').flip(axis=UP),77:MathTex('2').flip(axis=UP),78:MathTex('4').flip(axis=UP),79:MathTex('-2').flip(axis=UP),80:MathTex('-9').flip(axis=UP),81:MathTex('1').flip(axis=UP),82:MathTex('-3').flip(axis=UP),83:MathTex('4').flip(axis=UP),84:MathTex('-3').flip(axis=UP),85:MathTex('6').flip(axis=UP),86:MathTex('9').flip(axis=UP),87:MathTex('-9').flip(axis=UP),88:MathTex('0').flip(axis=UP),89:MathTex('1').flip(axis=UP),90:MathTex('7').flip(axis=UP),91:MathTex('-9').flip(axis=UP),92:MathTex('-8').flip(axis=UP),93:MathTex('1').flip(axis=UP),94:MathTex('7').flip(axis=UP),95:MathTex('5').flip(axis=UP),96:MathTex('-3').flip(axis=UP),97:MathTex('2').flip(axis=UP),98:MathTex('7').flip(axis=UP),99:MathTex('-9').flip(axis=UP),100:MathTex('1').flip(axis=UP),101:MathTex('-1').flip(axis=UP),102:MathTex('-7').flip(axis=UP),103:MathTex('9').flip(axis=UP),104:MathTex('7').flip(axis=UP),105:MathTex('7').flip(axis=UP),106:MathTex('9').flip(axis=UP),107:MathTex('-8').flip(axis=UP),108:MathTex('7').flip(axis=UP),109:MathTex('3').flip(axis=UP),110:MathTex('-2').flip(axis=UP),111:MathTex('-9').flip(axis=UP),112:MathTex('2').flip(axis=UP),113:MathTex('-1').flip(axis=UP),114:MathTex('3').flip(axis=UP),115:MathTex('1').flip(axis=UP),116:MathTex('9').flip(axis=UP),117:MathTex('8').flip(axis=UP),118:MathTex('6').flip(axis=UP),119:MathTex('-5').flip(axis=UP),120:MathTex('6').flip(axis=UP),121:MathTex('8').flip(axis=UP),122:MathTex('1').flip(axis=UP),123:MathTex('5').flip(axis=UP),124:MathTex('-3').flip(axis=UP),}
+        internal_tree.scores = {1: -1, 2: 7, 3: 1, 4: -6, 5: -6, 6: -7, 7: -3, 8: 7, 9: -1, 10: 8, 11: 6, 12: 9, 13: 8, 14: 6, 15: 8, 16: 7, 17: 7, 18: 8, 19: 9, 20: 3, 21: None, 22: None, 23: 9, 24: 9, 25: 7, 26: -7, 27: 8, 28: 9, 29: 1, 30: -8, 31: None, 32: None, 33: None, 34: -6, 35: 3, 36: -9, 37: -3, 38: 6, 39: -7, 40: 6, 41: -8, 42: 7, 43: 2, 44: 6, 45: -1, 46: 8, 47: 2, 48: -8, 49: -6, 50: 1, 51: 2, 52: -3, 53: 9, 54: 3, 55: 6, 56: -1, 57: -8, 58: -6, 59: 3, 60: -2, 61: -3, 62: -7, 63: 4, 64: -7, 65: 7, 66: -3, 67: -8, 68: -2, 69: -7, 70: 0, 71: -5, 72: -5, 73: 2, 74: 3, 75: 0, 76: -3, 77: 2, 78: 4, 79: -2, 80: -9, 81: 1, 82: -3, 83: 4, 84: -3, 85: 6, 86: 9, 87: -9, 88: 0, 89: 1, 90: 7, 91: -9, 92: -8, 93: 1, 94: 7, 95: 5, 96: -3, 97: 2, 98: 7, 99: -9, 100: 1, 101: -1, 102: -7, 103: 9, 104: 7, 105: 7, 106: 9, 107: -8, 108: 7, 109: 3, 110: -2, 111: -9, 112: 2, 113: -1, 114: 3, 115: 1, 116: 9, 117: 8, 118: 6, 119: -5, 120: 6, 121: 8, 122: 1, 123: 5, 124: -3}    
+        internal_tree.size = 125
 
         crosses = VGroup()
         def Negamax(internal_tree: Tree, displayed_tree: Graph, current_node: int, side_to_move: int, alpha:int, beta:int):
@@ -827,8 +830,6 @@ class AB(Scene):
                 if best_so_far > beta:
                     beta_cutoff = True
                     break
-            
-            self.add(Tex(f"{best_so_far}").move_to(displayed_tree[current_node]))
 
             if beta_cutoff == True:
                 children_node += 1
@@ -843,20 +844,32 @@ class AB(Scene):
             internal_tree.edges_list,
             layout="tree",
             layout_config={"root_vertex":1},
-            layout_scale=LAYOUT_SCALE,
+            layout_scale=(6,2.5),
             vertex_config=VERTEX_CONFIG,
             labels=internal_tree.labels
-        ).flip(axis=UP).move_to(RIGHT*0.5)
-
-        self.add(displayed_tree)
+        ).flip(axis=UP).shift(DOWN*0.5)
         Negamax(internal_tree, displayed_tree, 1, 1, -10, 10)
-        print(internal_tree)
+
         alpha_beta_tex[0][6:10].set_color(BLUE)
-
-        self.play(Write(alpha_beta_tex), run_time=3)
-
-
-
+        opponent_POV = Tex("Opponent POV:").to_corner(UL).shift(DOWN*1.5+RIGHT*0.5)
+        blist = BulletedList("Don't allow position", "Get rekt").next_to(opponent_POV, DOWN).shift(RIGHT)
+        # dont_allow = Tex("Don't allow position").next_to(opponent_POV, DR)
+        # get_rekt = Tex("Get rekt").next_to(dont_allow, DOWN)
+        self.play(Succession(Write(alpha_beta_tex), Create(displayed_tree)), run_time=3)
+        self.wait(2.1)
+        self.play(Create(crosses), run_time=2.4)
+        self.wait(2.8)
+        self.play(Indicate(displayed_tree[1][1]), run_time=2.3)
+        self.wait(3.3)
+        self.play(Indicate(displayed_tree[20][1]), run_time=2.2)
+        self.play(Indicate(crosses[7:9]))
+        self.wait(0.8)
+        self.play(Uncreate(crosses), Uncreate(displayed_tree))
+        self.play(Write(opponent_POV))
+        self.play(Write(blist[0]), run_time=2)
+        self.wait(0.7)
+        self.play(Write(blist[1]), run_time=2)
+        self.wait(4.5)
         self.next_section("window_ab", skip_animations=False)
 
         arrow_tip_length = 0.25
@@ -896,6 +909,8 @@ class AB(Scene):
                 )
         
         #Text
+        alpha = alpha_beta_tex[0][0:5].copy()
+        beta = alpha_beta_tex[0][6:10].copy()
         alpha_tex = MathTex(r"\alpha", color=RED).next_to(rect, DOWN)
         beta_tex = MathTex(r"\beta", color=BLUE).next_to(rect, UP)
         exact_text = Tex("Exact scores", font_size=48).move_to((4.8,1,0))
@@ -931,8 +946,7 @@ class AB(Scene):
         score_dot = Dot().add_updater(lambda m: m.move_to((0, dot_tracker.get_value(), 0)))
 
         #Animations
-        self.play(FadeIn(alpha_tex), FadeIn(beta_tex), run_time=2)
-        self.add(alpha_tex, beta_tex)
+        self.play(*[FadeOut(mobject) for mobject in self.mobjects], ReplacementTransform(alpha, alpha_tex), ReplacementTransform(beta, beta_tex), run_time=2)
         self.play(GrowFromCenter(rect))
         self.play(FadeTransform(rect, exact_window))
         self.play(Wiggle(alpha_tex, scale_value=1.5), run_time=1.9)
@@ -1002,7 +1016,7 @@ class AB(Scene):
         self.play(Unwrite(score_dot), *[non_exact_window.animate.set_fill(opacity=0.2) for non_exact_window in non_exact_windows])
         self.wait(5)
 
-        self.next_section("fail_low_fail_high", skip_animations=False)
+        self.next_section("fail_low_fail_high", skip_animations=True)
 
         #Score dots
         score_dots_exact = VGroup(
@@ -1075,7 +1089,7 @@ class AB(Scene):
         self.play(Flash(score_dots_exact[5]), run_time=1.5)
         self.wait(5)
 
-        self.next_section("ab_code", skip_animations=False)
+        self.next_section("ab_code", skip_animations=True)
 
         code_negamax = '''def Negamax(depth, current_node, side_to_move):
     if depth == 0:
@@ -1210,7 +1224,7 @@ class AB(Scene):
         self.wait(5)
 
 
-        self.next_section("ab_tree", skip_animations=False)
+        self.next_section("ab_tree", skip_animations=True)
 
         RECT=0
         ALPHA_TEX=1
@@ -1370,7 +1384,7 @@ class AB(Scene):
                     self.wait(2.8)
                     return best_so_far
                 if current_node == 9:
-                    self.next_section("beta_cutoff", skip_animations=False)
+                    self.next_section("beta_cutoff", skip_animations=True)
                     dot = Dot(radius=0.04, color=RED).next_to(displayed_tree[parent_node]).shift((0,(RADIUS/10)*(-best_so_far),0))
                     dot.move_to((global_window_group_list[parent_node][RECT].get_x(), dot.get_y(), 0))
                     eight_tex = Tex("8", font_size=10, color=RED).next_to(dot, LEFT)
@@ -1462,7 +1476,7 @@ class AB(Scene):
         self.wait(5)
 
 
-        self.next_section("ab_properties", skip_animations=False)
+        self.next_section("ab_properties", skip_animations=True)
 
         fail_high_text = Tex("Fail high", font_size=24, color=BLUE)
         fail_low_text = Tex("Fail low", font_size=24, color=RED)
